@@ -561,3 +561,121 @@ if uploaded_file is not None:
     
     except Exception as e:
         st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
+        # ============================================================
+# ميزة رفع CSV لتحليل بيانات جديدة
+# ============================================================
+st.markdown("---")
+st.header("📤 رفع بيانات تجريبية جديدة (CSV)")
+st.caption("ارفع ملف CSV فيه بيانات التقادم المعجل لتحليلها فورًا")
+
+uploaded_file = st.file_uploader(
+    "اختر ملف CSV",
+    type=["csv"],
+    help="الأعمدة المطلوبة: temperature_C, time_days, property_name"
+)
+
+if uploaded_file is not None:
+    try:
+        # قراءة الملف
+        df_upload = pd.read_csv(uploaded_file)
+
+        st.success("✅ تم رفع الملف بنجاح!")
+
+        # عرض البيانات
+        st.subheader("📋 البيانات المرفوعة")
+        st.dataframe(df_upload, use_container_width=True)
+
+        # التحقق من الأعمدة
+        required_cols = ['temperature_C', 'time_days']
+        if not all(col in df_upload.columns for col in required_cols):
+            st.error(
+                f"⚠️ الملف لازم يحتوي على الأعمدة: {required_cols}. "
+                f"الأعمدة الموجودة: {list(df_upload.columns)}"
+            )
+        else:
+            # اختيار الخاصية
+            property_cols = [c for c in df_upload.columns
+                             if c not in ['temperature_C', 'time_days']]
+
+            if len(property_cols) == 0:
+                st.error("⚠️ لا توجد أعمدة خصائص للتحليل")
+            else:
+                selected_prop = st.selectbox(
+                    "اختر الخاصية للتحليل",
+                    property_cols
+                )
+
+                # حساب k لكل درجة حرارة
+                st.subheader("🔬 تحليل البيانات")
+
+                results = []
+                for T in sorted(df_upload['temperature_C'].unique()):
+                    sub = df_upload[df_upload['temperature_C'] == T]
+                    sub = sub.dropna(subset=[selected_prop])
+
+                    if len(sub) < 2:
+                        continue
+
+                    t_vals = sub['time_days'].values
+                    y_vals = sub[selected_prop].values
+                    y0 = y_vals[0]
+
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        k_vals = (y_vals / y0 - 1) / t_vals
+                    k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
+                    k_mean = float(np.mean(k_vals))
+
+                    results.append({
+                        'T_C': T,
+                        'T_K': T + 273.15,
+                        'k': k_mean,
+                        'k_std': float(np.std(k_vals)),
+                        'n_points': len(sub),
+                        'y0': y0,
+                    })
+
+                results_df = pd.DataFrame(results)
+                st.dataframe(results_df, use_container_width=True)
+
+                # حساب Ea من البيانات لو فيه 3 درجات حرارة
+                if len(results_df) >= 3:
+                    inv_T = 1 / results_df['T_K'].values
+                    ln_k = np.log(np.abs(results_df['k'].values))
+                    slope, intercept = np.polyfit(inv_T, ln_k, 1)
+                    Ea_calc = -slope * R / 1000  # kJ/mol
+                    A_calc = np.exp(intercept)
+
+                    st.success(f"✅ **طاقة التنشيط Ea = {Ea_calc:.2f} kJ/mol**")
+                    st.info(f"**معامل Arrhenius A = {A_calc:.4e} /day**")
+
+                    # حساب العمر عند 25°C
+                    k_25 = A_calc * np.exp(-Ea_calc * 1000 / (R * T_ref_K))
+                    life_25 = (threshold_pct / 100) / k_25 / 365
+
+                    col1, col2 = st.columns(2)
+                    col1.metric("Ea المحسوبة", f"{Ea_calc:.1f} kJ/mol")
+                    col2.metric("العمر عند 25°C", f"{life_25:.2f} سنة")
+
+                    # رسم Arrhenius
+                    fig_a, ax_a = plt.subplots(figsize=(10, 5))
+                    fig_a.patch.set_facecolor('#f5f7fa')
+                    ax_a.set_facecolor('#ffffff')
+                    ax_a.scatter(inv_T * 1000, ln_k, s=150, c='red', zorder=5)
+                    t_line = np.linspace(inv_T.min(), inv_T.max(), 100)
+                    ax_a.plot(t_line * 1000, slope * t_line + intercept,
+                              'b--', linewidth=2,
+                              label=f'Ea = {Ea_calc:.1f} kJ/mol')
+                    ax_a.set_xlabel('1000/T (K⁻¹)')
+                    ax_a.set_ylabel('ln(k)')
+                    ax_a.set_title('Arrhenius Plot', fontweight='bold')
+                    ax_a.legend()
+                    ax_a.grid(True, alpha=0.3)
+                    st.pyplot(fig_a)
+                else:
+                    st.warning(
+                        f"⚠️ عندك {len(results_df)} درجة حرارة فقط. "
+                        "لحساب Ea بدقة، محتاج 3 درجات على الأقل."
+                    )
+
+    except Exception as e:
+        st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
