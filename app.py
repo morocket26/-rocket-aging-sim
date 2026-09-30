@@ -186,6 +186,7 @@ if prop["has_real_data"]:
         "استخدام البيانات التجريبية (65°C)",
         value=True,
         help="لو فعلت، هتستخدم بياناتك الحقيقية. لو لأ، هتستخدم قيم أدبيات.",
+        key="use_real_data_checkbox",
     )
 else:
     prop_options = {
@@ -243,7 +244,7 @@ T_exp_C = 65.0
 T_exp_K = T_exp_C + 273.15
 
 # حساب k عند 65°C
-if use_real_data and prop["has_real_data"]:
+if prop["has_real_data"]:
     # من البيانات التجريبية
     d = prop["experimental_data"][prop_key]
     t = np.array(d["t"], dtype=float)
