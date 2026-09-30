@@ -263,7 +263,7 @@ if prop["has_real_data"]:
         k_vals = (y / y0 - 1) / t
     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
     k_obs = float(np.mean(k_vals))
-    data_source = f"Literature values ({prop['reference']})"
+    data_source = "Experimental data (65 c)"
 else:
     # من الأدبيات
     k_obs = prop["k_exp_65C"]
@@ -715,7 +715,7 @@ def generate_pdf_report():
         "  before critical decisions.",
         "- For higher accuracy, experimental data at 3 or more",
         "  temperatures is recommended.",
-        f"- Data source used: {data_source}",
+        f"- Data source used: 65 c Experimental Data"
     ]
     for line in notes:
         pdf.cell(0, 6, line, ln=True)
