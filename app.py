@@ -253,11 +253,11 @@ if use_real_data and prop["has_real_data"]:
         k_vals = (y / y0 - 1) / t
     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
     k_obs = float(np.mean(k_vals))
-    data_source = "بيانات تجريبية (65°C)"
+    data_source = f"Literature values ({prop['reference']})"
 else:
     # من الأدبيات
     k_obs = prop["k_exp_65C"]
-    data_source = f"قيم أدبيات ({prop['reference']})"
+    data_source = f"Literature values ({prop['reference']})"
 
 # حساب A من k_obs
 A_arr = k_obs / np.exp(-Ea / (R * T_exp_K))
