@@ -629,10 +629,10 @@ def generate_pdf_report():
 
     pdf.set_font("Arial", "", 10)
     param_lines = [
-        f"Governing Property: {prop_label}",
+        f"Governing Property: {clean_text_for_pdf(prop_label)}",
         f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
         f"Arrhenius Constant (A): {A_arr:.4e} /day",
-        f"Failure Criterion: {criterion}",
+        f"Failure Criterion: {clean_text_for_pdf(criterion)}",
         f"Allowed Change: {threshold_pct:.1f} %",
         f"Storage Temperature: {T_storage_C:.1f} C",
         f"Reference Temperature: 25.0 C",
