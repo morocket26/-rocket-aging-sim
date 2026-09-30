@@ -1,67 +1,133 @@
 # -*- coding: utf-8 -*-
 """
-حاسبة العمر الافتراضي - وقود صلب مزدوج الأساس
-معايرة ببيانات تقادم معجل حقيقية (65°C - HELL FIRE Motor)
+منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
+تدعم 5 أنواع من الوقود الصلب (DB, CMDB, Composite, NEPE, HTPE)
 """
+
 import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 st.set_page_config(
-    page_title="العمر الافتراضي - DB Propellant",
+    page_title="منصة التقادم - وقود صلب",
     page_icon="🚀",
     layout="wide"
 )
 
 R = 8.314
-T_ref_K = 298.15   # 25°C (مرجع المقارنة)
-T_exp_C = 65.0     # درجة حرارة التجربة
-T_exp_K = T_exp_C + 273.15
+T_ref_K = 298.15  # 25°C
 
-# ==================== بيانات تجربتك (65°C) ====================
-EXP_DATA = {
-    "young_modulus": {
-        "name": "معامل يونج",
-        "unit": "kg/cm²",
-        "t": [0, 10, 20, 35],
-        "y": [15.26, 17.05, 17.35, 17.83],
-        "y0": 15.26,
+# ============================================================
+# قاعدة بيانات أنواع الوقود
+# ============================================================
+PROPELLANT_TYPES = {
+    "CMDB - Composite Modified DB (وقودك)": {
+        "name_ar": "مركب معدل ثنائي الأساس",
+        "Ea_default": 125.0,
+        "Ea_range": (110.0, 140.0),
+        "aging_mechanism": "استهلاك المُثبِّت + أكسدة AP/Al",
+        "stabilizers": "2-NDPA + مضادات أكسدة",
+        "failure_criteria": [
+            "زيادة معامل يونج 20%",
+            "زيادة الدفع الأقصى 15%",
+            "زيادة الصلابة Shore A 10%",
+        ],
+        "reference": "Asthana et al., Solid Propellant Chemistry",
+        "k_exp_65C": 0.0048,
+        "has_real_data": True,
+        "experimental_data": {
+            "young_modulus": {
+                "label": "معامل يونج",
+                "t": [0, 10, 20, 35],
+                "y": [15.26, 17.05, 17.35, 17.83],
+                "y0": 15.26,
+                "unit": "kg/cm²",
+            },
+            "shore_A": {
+                "label": "الصلابة Shore A",
+                "t": [0, 10, 20, 35],
+                "y": [45, 46, 46, 47],
+                "y0": 45.0,
+                "unit": "-",
+            },
+            "max_thrust": {
+                "label": "الدفع الأقصى",
+                "t": [0, 35],
+                "y": [988, 1062],
+                "y0": 988.0,
+                "unit": "dan",
+            },
+        },
     },
-    "shore_A": {
-        "name": "الصلابة Shore A",
-        "unit": "-",
-        "t": [0, 10, 20, 35],
-        "y": [45, 46, 46, 47],
-        "y0": 45.0,
+    "DB - Double Base": {
+        "name_ar": "ثنائي الأساس",
+        "Ea_default": 115.0,
+        "Ea_range": (100.0, 130.0),
+        "aging_mechanism": "تحلل الإسترات النيتراتية → استهلاك المُثبِّت",
+        "stabilizers": "2-NDPA, Ethyl Centralite, Akardite II",
+        "failure_criteria": [
+            "استهلاك 50% من المُثبِّت",
+            "زيادة معامل يونج 20%",
+            "زيادة الصلابة Shore A 10%",
+        ],
+        "reference": "NATO STO-MP-AVT-268 (2017)",
+        "k_exp_65C": 0.0048,
+        "has_real_data": False,
+        "experimental_data": None,
     },
-    "max_thrust": {
-        "name": "الدفع الأقصى",
-        "unit": "dan",
-        "t": [0, 35],
-        "y": [988, 1062],
-        "y0": 988.0,
+    "Composite - HTPB/AP": {
+        "name_ar": "مركب HTPB/AP",
+        "Ea_default": 90.0,
+        "Ea_range": (80.0, 100.0),
+        "aging_mechanism": "أكسدة الـ binder + تكوين روابط عرضية",
+        "stabilizers": "مضادات أكسدة (Antioxidants)",
+        "failure_criteria": [
+            "انخفاض Elongation 30%",
+            "زيادة الصلابة Shore A 15%",
+            "زيادة معامل يونج 25%",
+        ],
+        "reference": "Shekhar, Prediction of Shelf Life (2014)",
+        "k_exp_65C": 0.0035,
+        "has_real_data": False,
+        "experimental_data": None,
+    },
+    "NEPE - Nitrate Ester Plasticized": {
+        "name_ar": "إستر نيتراتي ملدن",
+        "Ea_default": 135.0,
+        "Ea_range": (120.0, 150.0),
+        "aging_mechanism": "تحلل الإسترات + هجرة plasticizer",
+        "stabilizers": "مُثبِّتات خاصة",
+        "failure_criteria": [
+            "استهلاك 40% من المُثبِّت",
+            "تغير معامل يونج 15%",
+            "فقدان وزن 2%",
+        ],
+        "reference": "NATO STO-TR-AVT-171",
+        "k_exp_65C": 0.0080,
+        "has_real_data": False,
+        "experimental_data": None,
+    },
+    "HTPE - High Performance": {
+        "name_ar": "عالي الأداء",
+        "Ea_default": 100.0,
+        "Ea_range": (90.0, 110.0),
+        "aging_mechanism": "أكسدة البوليمر",
+        "stabilizers": "مضادات أكسدة",
+        "failure_criteria": [
+            "انخفاض Elongation 25%",
+            "زيادة معامل يونج 20%",
+        ],
+        "reference": "Insensitive Munitions Program Reports",
+        "k_exp_65C": 0.0040,
+        "has_real_data": False,
+        "experimental_data": None,
     },
 }
 
-# ==================== حساب k من البيانات ====================
-def compute_k_from_data(prop_key):
-    """حساب k (1/day) من البيانات عند 65°C بطريقة الانحدار"""
-    d = EXP_DATA[prop_key]
-    t = np.array(d["t"], dtype=float)
-    y = np.array(d["y"], dtype=float)
-    y0 = d["y0"]
-
-    # نموذج: y = y0 * (1 + k * t)  →  k = (y/y0 - 1) / t
-    with np.errstate(divide='ignore', invalid='ignore'):
-        k_vals = (y / y0 - 1) / t
-    k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
-    return float(np.mean(k_vals))
-
-
-K_OBS = {key: compute_k_from_data(key) for key in EXP_DATA}
-
-# ==================== CSS ====================
+# ============================================================
+# CSS مخصص
+# ============================================================
 st.markdown("""
 <style>
     .main { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
@@ -81,86 +147,156 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 حاسبة العمر الافتراضي - وقود مزدوج الأساس")
-st.caption("معايرة بنقطة واحدة | البيانات التجريبية عند 65°C | HELL FIRE Motor")
+st.title("🚀 منصة محاكاة اختبارات التقادم")
+st.caption("وقود صاروخي صلب | 5 أنواع مدعومة | معايرة ببيانات تجريبية")
 
-# ==================== الشريط الجانبي ====================
-st.sidebar.header("🎯 الخاصية الحاكمة")
-prop_label = st.sidebar.selectbox(
-    "اختر الخاصية",
-    ["معامل يونج (Young Modulus)", "الصلابة (Shore A)", "الدفع الأقصى (Max Thrust)"]
+# ============================================================
+# الشريط الجانبي: اختيار نوع الوقود
+# ============================================================
+st.sidebar.header("🔥 نوع الوقود")
+propellant_key = st.sidebar.selectbox(
+    "اختر نوع الوقود",
+    list(PROPELLANT_TYPES.keys()),
 )
-prop_map = {
-    "معامل يونج (Young Modulus)": "young_modulus",
-    "الصلابة (Shore A)": "shore_A",
-    "الدفع الأقصى (Max Thrust)": "max_thrust",
-}
-prop_key = prop_map[prop_label]
-prop_info = EXP_DATA[prop_key]
 
+prop = PROPELLANT_TYPES[propellant_key]
+
+# عرض معلومات النوع
+st.sidebar.markdown(f"""
+**📌 معلومات النوع:**
+- **الاسم بالعربي:** {prop['name_ar']}
+- **آلية التقادم:** {prop['aging_mechanism']}
+- **المُثبِّت:** {prop['stabilizers']}
+- **المرجع:** {prop['reference']}
+""")
+
+# ============================================================
+# اختيار الخاصية الحاكمة
+# ============================================================
+st.sidebar.header("🎯 الخاصية الحاكمة")
+
+if prop["has_real_data"]:
+    prop_options = {
+        "معامل يونج": "young_modulus",
+        "الصلابة Shore A": "shore_A",
+        "الدفع الأقصى": "max_thrust",
+    }
+    use_real_data = st.sidebar.checkbox(
+        "استخدام البيانات التجريبية (65°C)",
+        value=True,
+        help="لو فعلت، هتستخدم بياناتك الحقيقية. لو لأ، هتستخدم قيم أدبيات.",
+    )
+else:
+    prop_options = {
+        "معامل يونج": "young_modulus",
+        "الصلابة Shore A": "shore_A",
+    }
+    use_real_data = False
+
+prop_label = st.sidebar.selectbox("اختر الخاصية", list(prop_options.keys()))
+prop_key = prop_options[prop_label]
+
+# ============================================================
+# إعدادات Ea و k
+# ============================================================
 st.sidebar.header("🌡️ طاقة التنشيط Ea")
+Ea_min, Ea_max = prop["Ea_range"]
 Ea_kJ = st.sidebar.slider(
     "Ea (kJ/mol)",
-    min_value=70.0, max_value=130.0,
-    value=90.0, step=1.0,
-    help="90 kJ/mol قيمة نموذجية للـ DB. غيّرها لتشوف الحساسية."
+    min_value=float(Ea_min),
+    max_value=float(Ea_max),
+    value=float(prop["Ea_default"]),
+    step=1.0,
+    help=f"النطاق الموصى به: {Ea_min}-{Ea_max} kJ/mol",
 )
 
+# ============================================================
+# معيار الفشل
+# ============================================================
 st.sidebar.header("⚠️ معيار الفشل")
-threshold_pct = st.sidebar.slider(
-    "الحد المسموح (%)",
-    min_value=5.0, max_value=50.0, value=20.0, step=1.0
+criterion = st.sidebar.selectbox(
+    "اختر المعيار",
+    prop["failure_criteria"],
 )
 
+threshold_pct = st.sidebar.slider(
+    "النسبة المسموحة (%)",
+    min_value=5.0, max_value=50.0, value=20.0, step=1.0,
+)
+
+# ============================================================
+# ظروف التخزين
+# ============================================================
 st.sidebar.header("📦 ظروف التخزين")
 T_storage_C = st.sidebar.number_input(
     "درجة حرارة التخزين (°C)",
-    value=25.0, step=1.0
+    value=25.0, step=1.0,
 )
 
-# ==================== الحسابات ====================
+# ============================================================
+# الحسابات
+# ============================================================
 Ea = Ea_kJ * 1000
 T_storage_K = T_storage_C + 273.15
+T_exp_C = 65.0
+T_exp_K = T_exp_C + 273.15
 
-# k المُشاهد عند 65°C من بياناتك
-k_obs = K_OBS[prop_key]
+# حساب k عند 65°C
+if use_real_data and prop["has_real_data"]:
+    # من البيانات التجريبية
+    d = prop["experimental_data"][prop_key]
+    t = np.array(d["t"], dtype=float)
+    y = np.array(d["y"], dtype=float)
+    y0 = d["y0"]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        k_vals = (y / y0 - 1) / t
+    k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
+    k_obs = float(np.mean(k_vals))
+    data_source = "بيانات تجريبية (65°C)"
+else:
+    # من الأدبيات
+    k_obs = prop["k_exp_65C"]
+    data_source = f"قيم أدبيات ({prop['reference']})"
 
-# نحسب A من k المُشاهد عند 65°C
+# حساب A من k_obs
 A_arr = k_obs / np.exp(-Ea / (R * T_exp_K))
 
-# k عند أي درجة حرارة
 def k_at(T_K):
     return A_arr * np.exp(-Ea / (R * T_K))
 
 k_storage = k_at(T_storage_K)
 k_ref = k_at(T_ref_K)
-
-# معامل التسريع
 AF = k_storage / k_ref
 
-# ==================== عرض المعلومات ====================
+# ============================================================
+# عرض المعلومات
+# ============================================================
 st.markdown(f"""
 <div class="info-box">
 <b>📌 معايرة النموذج:</b><br>
-• <b>الخاصية:</b> {prop_info['name']} ({prop_info['unit']})<br>
-• <b>k عند 65°C (من بياناتك):</b> {k_obs:.6f} /day  →  {k_obs*100:.4f}% يوميًا<br>
+• <b>نوع الوقود:</b> {propellant_key}<br>
+• <b>الخاصية:</b> {prop_label}<br>
+• <b>مصدر البيانات:</b> {data_source}<br>
+• <b>k عند 65°C:</b> {k_obs:.6f} /day → {k_obs*100:.4f}% يوميًا<br>
 • <b>معامل Arrhenius A:</b> {A_arr:.4e} /day
 </div>
 """, unsafe_allow_html=True)
 
-# ==================== المؤشرات ====================
+# ============================================================
+# المؤشرات
+# ============================================================
 st.header("📊 المؤشرات الأساسية")
 
 col1, col2, col3 = st.columns(3)
-col1.metric("⚡ معامل التسريع AF", f"{AF:.3f}",
-            help=f"مقارنة بالتخزين عند 25°C")
+col1.metric("⚡ معامل التسريع AF", f"{AF:.3f}")
 col2.metric("🌡️ k عند التخزين", f"{k_storage:.4e} /day")
 col3.metric("📅 k عند 25°C", f"{k_ref:.4e} /day")
 
-# ==================== العمر الافتراضي ====================
+# ============================================================
+# العمر الافتراضي
+# ============================================================
 st.header("⏳ العمر الافتراضي")
 
-# t_fail = (threshold/100) / k   (من المعادلة y/y0 - 1 = k*t)
 t_fail_days = (threshold_pct / 100) / k_storage
 t_fail_years = t_fail_days / 365
 
@@ -170,51 +306,65 @@ st.markdown(f"""
     🎯 العمر عند {T_storage_C:.1f}°C = {t_fail_years:.2f} سنة
     </h2>
     <p style="margin: 10px 0 0 0; color: #155724;">
-    <b>معيار الفشل:</b> زيادة {prop_info['name']} بنسبة {threshold_pct:.0f}%<br>
+    <b>معيار الفشل:</b> {criterion}<br>
     <b>المدة بالأيام:</b> {t_fail_days:.0f} يوم
     </p>
 </div>
 """, unsafe_allow_html=True)
 
-# ==================== الرسم 1: مطابقة النموذج مع البيانات ====================
-st.header("🔬 التحقق: النموذج مقابل البيانات التجريبية")
+# ============================================================
+# رسم التحقق (لو بيانات حقيقية)
+# ============================================================
+if use_real_data and prop["has_real_data"]:
+    st.header("🔬 التحقق: النموذج مقابل البيانات التجريبية")
+    
+    d = prop["experimental_data"][prop_key]
+    t_data = np.array(d["t"], dtype=float)
+    y_data = np.array(d["y"], dtype=float)
+    y0 = d["y0"]
+    
+    fig, ax = plt.subplots(figsize=(11, 4.5))
+    fig.patch.set_facecolor('#f5f7fa')
+    ax.set_facecolor('#ffffff')
+    
+    ax.scatter(t_data, y_data, s=120, c='red', zorder=5,
+               label=f'بيانات تجريبية ({T_exp_C:.0f}°C)')
+    
+    t_smooth = np.linspace(0, max(t_data) * 1.2, 100)
+    y_smooth = y0 * (1 + k_obs * t_smooth)
+    ax.plot(t_smooth, y_smooth, 'b-', linewidth=2.5,
+            label=f'النموذج عند {T_exp_C:.0f}°C')
+    
+    ax.set_xlabel('الزمن (يوم)', fontsize=12)
+    ax.set_ylabel(f'{d["label"]} ({d["unit"]})', fontsize=12)
+    ax.set_title(f'مطابقة النموذج للبيانات عند {T_exp_C:.0f}°C',
+                 fontsize=13, fontweight='bold')
+    ax.legend(fontsize=10)
+    ax.grid(True, alpha=0.3)
+    st.pyplot(fig)
+    
+    st.caption(f"✅ النموذج مضبوط تلقائيًا على بياناتك مع k = {k_obs:.6f}/day")
 
-fig, ax = plt.subplots(figsize=(11, 4.5))
-fig.patch.set_facecolor('#f5f7fa')
-ax.set_facecolor('#ffffff')
+# ============================================================
+# رسم تطور الخاصية عند التخزين
+# ============================================================
+st.header(f"📈 تطور {prop_label} عند {T_storage_C:.0f}°C")
 
-# البيانات التجريبية
-ax.scatter(prop_info["t"], prop_info["y"], s=120, c='red', zorder=5,
-           label=f'بيانات تجريبية ({T_exp_C:.0f}°C)')
-
-# المنحنى النظري عند 65°C
-t_smooth = np.linspace(0, max(prop_info["t"]) * 1.2, 100)
-y_smooth = prop_info["y0"] * (1 + k_obs * t_smooth)
-ax.plot(t_smooth, y_smooth, 'b-', linewidth=2.5,
-        label=f'النموذج عند {T_exp_C:.0f}°C')
-
-ax.set_xlabel('الزمن (يوم)', fontsize=12)
-ax.set_ylabel(f'{prop_info["name"]} ({prop_info["unit"]})', fontsize=12)
-ax.set_title(f'مطابقة النموذج للبيانات عند {T_exp_C:.0f}°C', fontsize=13, fontweight='bold')
-ax.legend(fontsize=10)
-ax.grid(True, alpha=0.3)
-st.pyplot(fig)
-
-st.caption(
-    f"✅ النموذج مضبوط تلقائيًا على بياناتك. "
-    f"الخط الأزرق يمثل المعادلة y = y0(1 + k·t) مع k = {k_obs:.6f}/day"
-)
-
-# ==================== الرسم 2: تطور الخاصية عند التخزين ====================
-st.header(f"📈 تطور {prop_info['name']} عند {T_storage_C:.0f}°C")
+# القيمة الابتدائية
+if use_real_data and prop["has_real_data"]:
+    y0_display = prop["experimental_data"][prop_key]["y0"]
+    unit_display = prop["experimental_data"][prop_key]["unit"]
+else:
+    y0_display = 1.0
+    unit_display = "قيمة نسبية"
 
 fig2, ax2 = plt.subplots(figsize=(11, 5))
 fig2.patch.set_facecolor('#f5f7fa')
 ax2.set_facecolor('#ffffff')
 
 t_arr = np.linspace(0, max(365 * 50, t_fail_days * 1.5), 2000)
-y_arr = prop_info["y0"] * (1 + k_storage * t_arr)
-threshold_val = prop_info["y0"] * (1 + threshold_pct / 100)
+y_arr = y0_display * (1 + k_storage * t_arr)
+threshold_val = y0_display * (1 + threshold_pct / 100)
 
 ax2.plot(t_arr / 365, y_arr, 'b-', linewidth=2.5, label='القيمة المتوقعة')
 ax2.axhline(threshold_val, color='r', linestyle='--', linewidth=2,
@@ -227,17 +377,20 @@ if t_fail_years < 50:
                 zorder=5, marker='X')
 
 ax2.set_xlabel('الزمن (سنة)', fontsize=12)
-ax2.set_ylabel(f'{prop_info["name"]} ({prop_info["unit"]})', fontsize=12)
-ax2.set_title(f'منحنى التقادم عند {T_storage_C:.0f}°C', fontsize=13, fontweight='bold')
+ax2.set_ylabel(f'{prop_label} ({unit_display})', fontsize=12)
+ax2.set_title(f'منحنى التقادم عند {T_storage_C:.0f}°C',
+              fontsize=13, fontweight='bold')
 ax2.legend(fontsize=10)
 ax2.grid(True, alpha=0.3)
 st.pyplot(fig2)
 
-# ==================== جدول المقارنة ====================
+# ============================================================
+# جدول المقارنة
+# ============================================================
 st.header("🌡️ مقارنة العمر عند درجات حرارة مختلفة")
 
 data = []
-for T_C in [15, 20, 25, 30, 40, 50, 60, 65]:
+for T_C in [15, 20, 25, 30, 35, 40, 50, 60, 65]:
     T_K = T_C + 273.15
     k = k_at(T_K)
     t_y = (threshold_pct / 100) / k / 365
@@ -246,14 +399,48 @@ for T_C in [15, 20, 25, 30, 40, 50, 60, 65]:
         "الحرارة (°C)": f"{T_C}",
         "k (/day)": f"{k:.4e}",
         "معامل التسريع": f"{AF_i:.2f}",
-        "العمر (سنة)": f"{t_y:.2f}" if t_y < 1000 else "> 1000"
+        "العمر (سنة)": f"{t_y:.2f}" if t_y < 1000 else "> 1000",
     })
 
 st.dataframe(pd.DataFrame(data), use_container_width=True)
 
-# ==================== تحذير ====================
+# ============================================================
+# مقارنة أنواع الوقود
+# ============================================================
+st.header("🔥 مقارنة أنواع الوقود المختلفة")
+st.caption(f"باستخدام Ea = {Ea_kJ:.0f} kJ/mol و معيار {threshold_pct:.0f}%")
+
+comparison = []
+for name, p in PROPELLANT_TYPES.items():
+    k_65 = p["k_exp_65C"]
+    A = k_65 / np.exp(-Ea / (R * T_exp_K))
+    k_25 = A * np.exp(-Ea / (R * T_ref_K))
+    life_25 = (threshold_pct / 100) / k_25 / 365
+    comparison.append({
+        "نوع الوقود": name.split(" - ")[0],
+        "k عند 65°C": f"{k_65:.4e}",
+        "Ea الافتراضي (kJ/mol)": f"{p['Ea_default']:.0f}",
+        "العمر عند 25°C (سنة)": f"{life_25:.2f}" if life_25 < 1000 else "> 1000",
+    })
+
+st.dataframe(pd.DataFrame(comparison), use_container_width=True)
+
+# ============================================================
+# بيانات تجريبية
+# ============================================================
+if prop["has_real_data"]:
+    with st.expander(f"📋 عرض البيانات التجريبية ({propellant_key})"):
+        d = prop["experimental_data"][prop_key]
+        df_display = pd.DataFrame({
+            "الزمن (يوم)": d["t"],
+            f"{d['label']} ({d['unit']})": d["y"],
+        })
+        st.dataframe(df_display, use_container_width=True)
+
+# ============================================================
+# تحذير
+# ============================================================
 st.warning(
-    f"⚠️ **تنبيه:** النموذج معاير بنقطة واحدة (65°C) باستخدام Ea = {Ea_kJ:.0f} kJ/mol. "
-    "لتقليل عدم اليقين، يُنصح بإضافة بيانات من درجات حرارة أخرى (50°C و 70°C مثلاً) "
-    "لإجراء تحليل Arrhenius كامل."
+    f"⚠️ **تنبيه:** النموذج معاير بـ {data_source}. "
+    f"القيم المعروضة تقديرية. للدقة العالية، يُنصح ببيانات من 3 درجات حرارة على الأقل."
 )
