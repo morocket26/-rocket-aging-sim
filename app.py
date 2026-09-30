@@ -720,7 +720,7 @@ def generate_pdf_report():
     pdf.cell(0, 6, "https://rocket-aging-sim.streamlit.app",
              ln=True, align="C")
 
-        return bytes(pdf.output())
+    return bytes(pdf.output())
 
 
 # زر تحميل التقرير
