@@ -10,6 +10,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from fpdf import FPDF
 from datetime import datetime
+
+def has_valid_experimental_data(prop):
+    """التحقق التلقائي إن النوع ده فيه بيانات تجريبية صالحة"""
+    data = prop.get("experimental_data")
+    if not data:
+        return False
+    for key, d in data.items():
+        if isinstance(d, dict) and d.get("y") and len(d["y"]) >= 2:
+            return True
+    return False
 st.set_page_config(
     page_title="منصة التقادم - وقود صلب",
     page_icon="🚀",
@@ -569,17 +579,6 @@ if uploaded_file is not None:
 st.markdown("---")
 st.header("📄 تصدير تقرير PDF")
 st.caption("حمّل تقرير شامل يحتوي على كل النتائج والتحليلات")
-
-
-def has_valid_experimental_data(prop):
-    """التحقق التلقائي إن النوع ده فيه بيانات تجريبية صالحة"""
-    data = prop.get("experimental_data")
-    if not data:
-        return False
-    for key, d in data.items():
-        if isinstance(d, dict) and d.get("y") and len(d["y"]) >= 2:
-            return True
-    return False
 
 
 def clean_text_for_pdf(text):
