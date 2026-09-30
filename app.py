@@ -7,7 +7,11 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-
+# حل مشكلة اختلاف إصدارات numpy
+try:
+    trapz = np.trapezoid   # numpy 2.0+
+except AttributeError:
+    trapz = np.trapz       # numpy أقدم
 # ==================== الإعدادات العامة ====================
 st.set_page_config(page_title="حاسبة العمر الافتراضي", page_icon="🚀", layout="wide")
 st.title("🚀 حاسبة العمر الافتراضي - محرك صاروخي صلب")
@@ -66,7 +70,7 @@ def simulate(aging_factor):
 
     P_max = max(P_list)
     rb_avg = np.mean([a * (P ** n) * aging_factor for P in P_list])
-    total_impulse = np.trapz(T_list, time_list)
+    total_impulse = trapz(T_list, time_list)
     return P_max, rb_avg, total_impulse, time_list, P_list, T_list
 
 # ==================== الحسابات ====================
