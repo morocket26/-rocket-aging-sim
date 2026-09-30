@@ -8,7 +8,8 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from fpdf import FPDF
+from datetime import datetime
 st.set_page_config(
     page_title="منصة التقادم - وقود صلب",
     page_icon="🚀",
