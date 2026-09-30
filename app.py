@@ -193,7 +193,6 @@ else:
         "معامل يونج": "young_modulus",
         "الصلابة Shore A": "shore_A",
     }
-    use_real_data = False
 
 prop_label = st.sidebar.selectbox("اختر الخاصية", list(prop_options.keys()))
 prop_key = prop_options[prop_label]
@@ -317,7 +316,7 @@ st.markdown(f"""
 # ============================================================
 # رسم التحقق (لو بيانات حقيقية)
 # ============================================================
-if use_real_data and prop["has_real_data"]:
+if has_valid_experimental_data(prop):
     st.header("🔬 التحقق: النموذج مقابل البيانات التجريبية")
     
     d = prop["experimental_data"][prop_key]
@@ -353,7 +352,7 @@ if use_real_data and prop["has_real_data"]:
 st.header(f"📈 تطور {prop_label} عند {T_storage_C:.0f}°C")
 
 # القيمة الابتدائية
-if use_real_data and prop["has_real_data"]:
+if has_valid_experimental_data(prop):
     y0_display = prop["experimental_data"][prop_key]["y0"]
     unit_display = prop["experimental_data"][prop_key]["unit"]
 else:
@@ -570,6 +569,17 @@ if uploaded_file is not None:
 st.markdown("---")
 st.header("📄 تصدير تقرير PDF")
 st.caption("حمّل تقرير شامل يحتوي على كل النتائج والتحليلات")
+
+
+def has_valid_experimental_data(prop):
+    """التحقق التلقائي إن النوع ده فيه بيانات تجريبية صالحة"""
+    data = prop.get("experimental_data")
+    if not data:
+        return False
+    for key, d in data.items():
+        if isinstance(d, dict) and d.get("y") and len(d["y"]) >= 2:
+            return True
+    return False
 
 
 def clean_text_for_pdf(text):
