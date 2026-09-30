@@ -1,183 +1,206 @@
 # -*- coding: utf-8 -*-
 """
-حاسبة العمر الافتراضي - محرك صاروخي صلب
-نموذج مبسط لتقدير Shelf Life بناءً على ظروف التخزين
+حاسبة العمر الافتراضي - وقود صلب مزدوج الأساس
+معايرة ببيانات تقادم معجل حقيقية (HELL FIRE Motor)
 """
-
 import streamlit as st
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-# حل مشكلة اختلاف إصدارات numpy
+
 try:
-    trapz = np.trapezoid   # numpy 2.0+
+    trapz = np.trapezoid
 except AttributeError:
-    trapz = np.trapz       # numpy أقدم
-# ==================== الإعدادات العامة ====================
-st.set_page_config(page_title="حاسبة العمر الافتراضي", page_icon="🚀", layout="wide")
-st.title("🚀 حاسبة العمر الافتراضي - محرك صاروخي صلب")
-st.caption("نموذج مبسط لتقدير Shelf Life بناءً على ظروف التخزين ومعيار فشل")
+    trapz = np.trapz
 
-R = 8.314          # ثابت الغازات العام J/mol.K
-T_ref = 293.15     # درجة الحرارة المرجعية (20°C)
-
-# ==================== الشريط الجانبي: المدخلات ====================
-st.sidebar.header("🔧 بيانات المحرك")
-
-D_out = st.sidebar.number_input("القطر الخارجي (m)", value=0.20, step=0.01)
-d_in  = st.sidebar.number_input("القطر الداخلي (m)", value=0.08, step=0.01)
-L     = st.sidebar.number_input("الطول (m)", value=0.50, step=0.05)
-rho_p = st.sidebar.number_input("كثافة الوقود (kg/m³)", value=1700.0, step=10.0)
-a     = st.sidebar.number_input("معامل معدل الاحتراق a", value=0.005, format="%.5f")
-n     = st.sidebar.number_input("أس معدل الاحتراق n", value=0.35, step=0.01)
-At    = st.sidebar.number_input("مساحة فتحة الخروج (m²)", value=0.002, format="%.5f")
-Cf    = st.sidebar.number_input("معامل الدفع Cf", value=1.5, step=0.05)
-
-st.sidebar.header("🌡️ ظروف التخزين والتقادم")
-T_storage = st.sidebar.number_input("درجة حرارة التخزين (K)", value=323.0, step=1.0)
-Ea        = st.sidebar.number_input("طاقة التنشيط Ea (J/mol)", value=80000.0, step=1000.0)
-k_aging   = st.sidebar.number_input("ثابت معدل التقادم k (1/s)", value=1e-9, format="%.2e")
-
-st.sidebar.header("⚠️ معيار الفشل")
-criterion = st.sidebar.selectbox(
-    "نوع معيار الفشل",
-    ["زيادة الضغط بنسبة %", "زيادة معدل الاحتراق بنسبة %", "انخفاض إجمالي الدفع بنسبة %"]
+st.set_page_config(
+    page_title="العمر الافتراضي - DB Propellant",
+    page_icon="🚀",
+    layout="wide"
 )
-threshold_pct = st.sidebar.number_input("نسبة التغير المسموحة (%)", value=15.0, step=1.0)
 
-# ==================== دوال الحساب ====================
-def simulate(aging_factor):
-    """محاكاة الاحتراق وإرجاع (P_max, rb_avg, total_impulse)"""
-    dt = 0.001
-    r = d_in / 2
-    r_out = D_out / 2
-    web = r_out - r
-    t = 0
-    P_list, T_list, time_list = [], [], []
+R = 8.314
+T_ref_K = 298.15  # 25°C
 
-    while web > 0 and t < 200:
-        Ab = 2 * np.pi * r * L
-        # الضغط شبه الثابت
-        Pc = (rho_p * Ab * a * aging_factor / At) ** (1 / (1 - n))
-        rb = a * (Pc ** n) * aging_factor
-        dr = rb * dt
-        r += dr
-        web -= dr
-        thrust = Cf * Pc * At
-        P_list.append(Pc)
-        T_list.append(thrust)
-        time_list.append(t)
-        t += dt
+# ==================== CSS مخصص ====================
+st.markdown("""
+<style>
+    .main { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    h1 { color: #1e3a8a; text-align: center; }
+    .stMetric {
+        background: white; padding: 15px; border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .success-box {
+        background: linear-gradient(90deg, #d4edda 0%, #c3e6cb 100%);
+        padding: 20px; border-radius: 10px; border-right: 5px solid #28a745;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-    P_max = max(P_list)
-    rb_avg = np.mean([a * (P ** n) * aging_factor for P in P_list])
-    total_impulse = trapz(T_list, time_list)
-    return P_max, rb_avg, total_impulse, time_list, P_list, T_list
+st.title("🚀 حاسبة العمر الافتراضي - وقود مزدوج الأساس")
+st.caption("معايرة ببيانات تقادم معجل | COMPOSITE MODIFIED DB | HELL FIRE Motor")
+
+# ==================== الشريط الجانبي ====================
+st.sidebar.header("🔧 معايير المادة (مستخرجة من بياناتك)")
+Ea_kJ = st.sidebar.number_input(
+    "طاقة التنشيط Ea (kJ/mol)",
+    value=115.0, step=1.0,
+    help="قيمة من الأدبيات للـ DB. عدّلها لو عندك بيانات أكثر"
+)
+
+A_arr = st.sidebar.number_input(
+    "معامل Arrhenius A (1/day)",
+    value=1.06e13, format="%.2e",
+    help="مستخرج من بياناتك عند 65°C"
+)
+
+st.sidebar.header("📊 معيار الفشل")
+criterion = st.sidebar.selectbox(
+    "اختر الخاصية الحاكمة",
+    [
+        "تغير معامل يونج (%)",
+        "تغير الصلابة Shore A (%)",
+        "تغير الدفع الأقصى (%)"
+    ]
+)
+
+threshold_pct = st.sidebar.number_input(
+    "الحد المسموح (%)",
+    value=20.0, step=1.0,
+    help="القيمة النموذجية: 15-25% للـ DB"
+)
+
+st.sidebar.header("🌡️ ظروف التخزين")
+T_storage_C = st.sidebar.number_input(
+    "درجة حرارة التخزين (°C)",
+    value=25.0, step=1.0
+)
+
+# ==================== القيم المرجعية ====================
+REF = {
+    "young_modulus": {"value": 15.26, "k_65": 0.087, "unit": "kg/cm²"},
+    "shore_A":       {"value": 45.0,  "k_65": 0.057, "unit": "-"},
+    "max_thrust":    {"value": 988.0, "k_65": 0.00207, "unit": "dan"},
+}
 
 # ==================== الحسابات ====================
-# المرجع (بدون تقادم)
-P0, rb0, I0, _, _, _ = simulate(1.0)
+Ea = Ea_kJ * 1000
+T_storage_K = T_storage_C + 273.15
 
-# معامل التسريع (Arrhenius)
-AF = np.exp((Ea / R) * (1 / T_ref - 1 / T_storage))
+k_65 = A_arr * np.exp(-Ea / (R * 338.15))
+k_ref = A_arr * np.exp(-Ea / (R * T_ref_K))
+k_storage = A_arr * np.exp(-Ea / (R * T_storage_K))
 
-# ==================== البحث عن العمر الافتراضي ====================
-t_eq_max = 100 * 365 * 24 * 3600   # 100 سنة كحد أقصى
-t_eq_arr = np.linspace(0, t_eq_max, 300)
+AF = k_storage / k_ref
 
-life_found = False
-life_equivalent = 0
-P_curve = []
-
-for te in t_eq_arr:
-    af = 1 + k_aging * te
-    P, rb, I, _, _, _ = simulate(af)
-    P_curve.append(P)
-
-    if criterion == "زيادة الضغط بنسبة %":
-        fail = (P - P0) / P0 * 100 >= threshold_pct
-    elif criterion == "زيادة معدل الاحتراق بنسبة %":
-        fail = (rb - rb0) / rb0 * 100 >= threshold_pct
-    else:
-        fail = (I0 - I) / I0 * 100 >= threshold_pct
-
-    if fail and not life_found:
-        life_equivalent = te
-        life_found = True
-        break
-
-life_real = life_equivalent / AF if life_found else 0
-
-# ==================== عرض النتائج ====================
-st.header("📊 النتائج")
+# ==================== العرض ====================
+st.header("📊 المؤشرات الأساسية")
 
 col1, col2, col3 = st.columns(3)
-col1.metric("معامل التسريع AF", f"{AF:.2f}")
-col2.metric("الضغط الاسمي P0", f"{P0/1e6:.2f} MPa")
-col3.metric("معدل الاحتراق الاسمي", f"{rb0*1000:.3f} mm/s")
+col1.metric("⚡ معامل التسريع AF", f"{AF:.2f}",
+            help="مقارنة بالتخزين عند 25°C")
+col2.metric("🌡️ معدل k عند التخزين", f"{k_storage:.4e} /day")
+col3.metric("📅 k عند 25°C", f"{k_ref:.4e} /day")
+
+# ==================== تحديد الخاصية ====================
+prop_map = {
+    "تغير معامل يونج (%)": ("young_modulus", 15.26),
+    "تغير الصلابة Shore A (%)": ("shore_A", 45.0),
+    "تغير الدفع الأقصى (%)": ("max_thrust", 988.0),
+}
+prop_key, prop_0 = prop_map[criterion]
+
+# ==================== نموذج التدهور ====================
+t_array = np.linspace(0, 365 * 30, 2000)
+prop_array = prop_0 * (1 + k_storage * t_array)
+threshold_value = prop_0 * (1 + threshold_pct / 100)
+
+t_fail_idx = np.where(prop_array >= threshold_value)[0]
+if len(t_fail_idx) > 0:
+    t_fail_days = t_array[t_fail_idx[0]]
+    t_fail_years = t_fail_days / 365
+    life_found = True
+else:
+    t_fail_years = float('inf')
+    life_found = False
+
+# ==================== النتيجة ====================
+st.header("⏳ العمر الافتراضي")
 
 if life_found:
-    years_real = life_real / (365 * 24 * 3600)
-    years_eq = life_equivalent / (365 * 24 * 3600)
-
-    st.success(f"### ⏳ العمر الافتراضي عند {T_storage:.0f} K")
-
-    c1, c2 = st.columns(2)
-    c1.metric("بالسنوات الفعلية", f"{years_real:.2f} سنة")
-    c2.metric("مكافئ عند 20°C", f"{years_eq:.2f} سنة")
-
-    st.info(f"**معيار الفشل:** {criterion} ≥ {threshold_pct}%")
+    st.markdown(f"""
+    <div class="success-box">
+        <h2 style="color: #155724; margin: 0;">
+        🎯 العمر الافتراضي عند {T_storage_C:.1f}°C = {t_fail_years:.2f} سنة
+        </h2>
+        <p style="margin: 10px 0 0 0; color: #155724;">
+        <b>معيار الفشل:</b> {criterion} ≥ {threshold_pct}%<br>
+        <b>المدة بالأيام:</b> {t_fail_days:.0f} يوم
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 else:
-    st.warning("⚠️ المحرك لم يصل لمعيار الفشل خلال 100 سنة مكافئة")
+    st.warning("⚠️ الخاصية لم تصل لحد الفشل خلال 30 سنة")
 
 # ==================== الرسم البياني ====================
-st.header("📈 تطور الضغط الأقصى مع الزمن")
+st.header(f"📈 تطور {criterion}")
 
-fig, ax = plt.subplots(figsize=(10, 4))
-x_years = t_eq_arr[:len(P_curve)] / (365 * 24 * 3600)
-ax.plot(x_years, np.array(P_curve) / 1e6, label="الضغط الأقصى", color="blue")
-ax.axhline(P0 * (1 + threshold_pct / 100) / 1e6, color="red",
-           linestyle="--", label="حد الفشل")
+fig, ax = plt.subplots(figsize=(11, 5))
+fig.patch.set_facecolor('#f5f7fa')
+ax.set_facecolor('#ffffff')
+
+ax.plot(t_array / 365, prop_array, 'b-', linewidth=2.5,
+        label='القيمة عند التخزين')
+ax.axhline(threshold_value, color='r', linestyle='--', linewidth=2,
+           label=f'حد الفشل ({threshold_pct}% زيادة)')
 if life_found:
-    ax.axvline(life_equivalent / (365 * 24 * 3600), color="green",
-               linestyle=":", label="العمر الافتراضي")
-ax.set_xlabel("الزمن المكافئ عند 20°C (سنة)")
-ax.set_ylabel("الضغط الأقصى (MPa)")
-ax.legend()
+    ax.axvline(t_fail_years, color='g', linestyle=':', linewidth=2.5,
+               label=f'العمر = {t_fail_years:.1f} سنة')
+    ax.scatter([t_fail_years], [threshold_value], s=200, c='red',
+               zorder=5, marker='X')
+
+ax.set_xlabel('الزمن (سنة)', fontsize=12)
+ax.set_ylabel(f'{criterion}', fontsize=12)
+ax.set_title(f'منحنى التقادم عند {T_storage_C:.1f}°C',
+             fontsize=14, fontweight='bold')
+ax.legend(loc='best', fontsize=10)
 ax.grid(True, alpha=0.3)
 st.pyplot(fig)
 
-# ==================== جدول مقارنة درجات الحرارة ====================
+# ==================== جدول المقارنة ====================
 st.header("🌡️ مقارنة العمر عند درجات حرارة مختلفة")
 
-temps = [293.15, 303.15, 313.15, 323.15, 333.15]
-results = []
-
-for T in temps:
-    AF_i = np.exp((Ea / R) * (1 / T_ref - 1 / T))
-    life_found_i = False
-    for te in t_eq_arr:
-        af = 1 + k_aging * te
-        P, rb, I, _, _, _ = simulate(af)
-        if criterion == "زيادة الضغط بنسبة %":
-            fail = (P - P0) / P0 * 100 >= threshold_pct
-        elif criterion == "زيادة معدل الاحتراق بنسبة %":
-            fail = (rb - rb0) / rb0 * 100 >= threshold_pct
-        else:
-            fail = (I0 - I) / I0 * 100 >= threshold_pct
-        if fail:
-            life_found_i = True
-            life_y = (te / AF_i) / (365 * 24 * 3600)
-            break
-    results.append({
-        "درجة الحرارة (°C)": f"{T - 273.15:.0f}",
+data = []
+for T_C in [15, 20, 25, 30, 40, 50, 60]:
+    T_K = T_C + 273.15
+    k = A_arr * np.exp(-Ea / (R * T_K))
+    t_years = (threshold_pct / 100) / k / 365
+    AF_i = k / k_ref
+    data.append({
+        "الحرارة (°C)": f"{T_C}",
         "معامل التسريع": f"{AF_i:.2f}",
-        "العمر (سنة)": f"{life_y:.2f}" if life_found_i else "> 100"
+        "معدل k (/day)": f"{k:.4e}",
+        "العمر (سنة)": f"{t_years:.2f}" if t_years < 100 else "> 100"
     })
 
-st.table(results)
+st.dataframe(pd.DataFrame(data), use_container_width=True)
+
+# ==================== بيانات الدراسة ====================
+with st.expander("📋 عرض بيانات الدراسة الأصلية (65°C)"):
+    df_display = pd.DataFrame({
+        "الزمن (يوم)": [0, 10, 20, 35],
+        "Young Modulus": [15.26, 17.05, 17.35, 17.83],
+        "Yield Stress (kg/cm²)": [0.92, 1.10, 1.20, 1.10],
+        "Max Strain (%)": [86.20, 79.50, 76.30, 88.40],
+        "Shore A": [45, 46, 46, 47],
+        "Max Thrust (dan)": [988, None, None, 1062],
+    })
+    st.dataframe(df_display, use_container_width=True)
 
 # ==================== تحذير ====================
 st.warning(
-    "⚠️ **تنبيه:** هذا النموذج تعليمي مبسط ولا يصلح للتصميم الفعلي أو "
-    "قرارات السلامة. أي قرار حقيقي يحتاج معايرة ببيانات اختبار فعلية."
+    "⚠️ **تنبيه:** النموذج معاير ببيانات تجريبية عند 65°C. "
+    "القيم المعروضة تقديرية. يُنصح بإضافة بيانات من درجات حرارة "
+    "أخرى (50، 60، 70°C) لتحسين دقة Ea."
 )
