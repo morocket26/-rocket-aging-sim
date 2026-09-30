@@ -604,10 +604,10 @@ def generate_pdf_report():
 
     pdf.set_font("Arial", "", 10)
     info_lines = [
-        f"Propellant Type: {propellant_key}",
-        f"Description: {prop['name_ar']}",
-        f"Aging Mechanism: {prop['aging_mechanism']}",
-        f"Stabilizers: {prop['stabilizers']}",
+        f"Propellant Type: {propellant_key.split(' - ')[0]}",
+        f"Description: {propellant_key.split(' - ')[0]}",
+        f"Aging Mechanism: See propellant reference",
+        f"Stabilizers: See propellant reference",
         f"Reference: {prop['reference']}",
     ]
     for line in info_lines:
