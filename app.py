@@ -571,8 +571,16 @@ st.header("📄 تصدير تقرير PDF")
 st.caption("حمّل تقرير شامل يحتوي على كل النتائج والتحليلات")
 
 
+def clean_text_for_pdf(text):
+    """إزالة أي حروف عربية من النص (fpdf2 مش بيدعم العربي)"""
+    import re
+    cleaned = re.sub(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+', '', text)
+    return ' '.join(cleaned.split()).strip()
+
+
 def generate_pdf_report():
     """إنشاء تقرير PDF احترافي بالنتائج"""
+
     pdf = FPDF()
     pdf.add_page()
 
@@ -604,8 +612,8 @@ def generate_pdf_report():
 
     pdf.set_font("Arial", "", 10)
     info_lines = [
-        f"Propellant Type: {propellant_key.split(' - ')[0]}",
-        f"Description: {propellant_key.split(' - ')[0]}",
+        f"Propellant Type: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
+        f"Description: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
         f"Aging Mechanism: See propellant reference",
         f"Stabilizers: See propellant reference",
         f"Reference: {prop['reference']}",
