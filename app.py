@@ -651,12 +651,10 @@ def generate_pdf_report():
 
     pdf.set_font("Arial", "", 10)
     info_lines = [
-        f"Propellant Type: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
-        f"Description: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
-        f"Aging Mechanism: See propellant reference",
-        f"Stabilizers: See propellant reference",
-        f"Reference: {prop['reference']}",
-    ]
+                   f"Propellant Type: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
+            f"Aging Mechanism: {prop.get('aging_mechanism_en', 'N/A')}",           
+        f"Stabilizers: {prop.get('stabilizers_en', 'N/A')}",
+            f"Reference: {prop.get('reference_en', prop.get('reference', 'N/A'))}",
     for line in info_lines:
         pdf.cell(0, 6, f"  - {line}", ln=True)
     pdf.ln(3)
@@ -667,16 +665,20 @@ def generate_pdf_report():
     pdf.ln(2)
 
     pdf.set_font("Arial", "", 10)
-    param_lines = [
-        f"Governing Property: {clean_text_for_pdf(prop_label)}",
-        f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
-        f"Arrhenius Constant (A): {A_arr:.4e} /day",
-        f"Failure Criterion: {clean_text_for_pdf(criterion)}",
-        f"Allowed Change: {threshold_pct:.1f} %",
-        f"Storage Temperature: {T_storage_C:.1f} C",
-        f"Reference Temperature: 25.0 C",
-        f"Experimental Temperature: {T_exp_C:.1f} C",
-    ]
+           # اسم الخاصية بالإنجليزي
+        prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
+
+        param_lines = [
+            f"Governing Property: {prop_label_en}",
+            f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
+            f"  [Literature reference: {prop.get('Ea_default', 0):.0f} kJ/mol]",
+            f"Arrhenius Constant (A): {A_arr:.4e} /day",
+            f"Failure Criterion: {prop_label_en} change",
+            f"Allowed Change: {threshold_pct:.1f} %",
+            f"Storage Temperature: {T_storage_C:.1f} C",
+            f"Reference Temperature: 25.0 C",
+            f"Experimental Temperature: {T_exp_C:.1f} C",
+        ]
     for line in param_lines:
         pdf.cell(0, 6, f"  - {line}", ln=True)
     pdf.ln(3)
