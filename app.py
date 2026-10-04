@@ -661,9 +661,9 @@ def generate_pdf_report():
     pdf.ln(3)
 
     # ===== 2. Simulation Parameters =====
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 9, "2. Simulation Parameters", ln=True)
-    pdf.ln(2)
+        pdf.set_font("Arial", "B", 13)
+        pdf.cell(0, 9, "2. Simulation Parameters", ln=True)
+        pdf.ln(2)
         pdf.set_font("Arial", "", 10)
         prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
         param_lines = [
