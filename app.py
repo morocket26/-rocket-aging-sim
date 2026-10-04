@@ -59,13 +59,13 @@ TRANSLATIONS = {
         "csv_analysis": "🔬 تحليل البيانات",
         "select_property_analysis": "اختر الخاصية للتحليل",
         "comparison_types": "⚔️ مقارنة تفصيلية بين نوعين من الوقود",
-        "comparison_caption": "قارن بين نوعين: k، Ea، والعمر الافتراضي عند درجات حرارة مختلفة",
+        "comparison_caption": "قارن بين نوعين: k، Ea، والعمر الافتراضي",
         "type_a": "النوع الأول (A)",
         "type_b": "النوع الثاني (B)",
         "compare_btn": "🔍 قارن الآن",
         "comparison_curve": "📈 منحنى العمر الافتراضي مقابل درجة الحرارة",
         "mc_header": "🎲 محاكاة Monte Carlo - التوزيع الاحتمالي",
-        "mc_caption": "بدل رقم واحد، هتطلعلك عيّنة احتمالية للعمر بناءً على عدم اليقين",
+        "mc_caption": "بدل رقم واحد، هتطلعلك عيّنة احتمالية للعمر",
         "mc_n_sim": "عدد مرات المحاكاة",
         "mc_ea_unc": "عدم اليقين في Ea (%)",
         "mc_k_unc": "عدم اليقين في k (%)",
@@ -80,7 +80,6 @@ TRANSLATIONS = {
         "abaqus_caption": "حمّل الملفات الجاهزة للتشغيل في برنامج Abaqus/CAE",
         "abaqus_inp": "📄 تحميل ملف INP",
         "abaqus_py": "🐍 تحميل سكريبت Python",
-        "abaqus_csv": "📥 تحميل بيانات الإجهاد-الانفعال (CSV)",
         "abaqus_guide": "📖 دليل استخدام ملفات Abaqus",
         "language": "🌐 اللغة / Language",
         "name": "الاسم",
@@ -128,23 +127,23 @@ TRANSLATIONS = {
         "k_per_day": "k (/day)",
         "life_col": "Life (years)",
         "pdf_header": "📄 Export PDF Report",
-        "pdf_caption": "Download a comprehensive report with all results and analyses",
+        "pdf_caption": "Download a comprehensive report with all results",
         "pdf_generate": "📥 Generate PDF Report",
         "pdf_download": "💾 Download PDF Report",
         "csv_header": "📤 Upload New Experimental Data (CSV)",
-        "csv_caption": "Upload CSV file with accelerated aging data for immediate analysis",
+        "csv_caption": "Upload CSV file with accelerated aging data",
         "csv_upload": "Choose CSV file",
         "csv_success": "✅ File uploaded successfully!",
         "csv_data": "📋 Uploaded Data",
         "csv_analysis": "🔬 Data Analysis",
         "select_property_analysis": "Select property for analysis",
-        "comparison_types": "⚔️ Head-to-Head Comparison Between Two Propellants",
-        "comparison_caption": "Compare two types: k, Ea, and shelf life at various temperatures",
+        "comparison_types": "⚔️ Head-to-Head Comparison",
+        "comparison_caption": "Compare two types: k, Ea, and shelf life",
         "type_a": "Type A",
         "type_b": "Type B",
         "compare_btn": "🔍 Compare Now",
         "comparison_curve": "📈 Shelf Life vs Temperature",
-        "mc_header": "🎲 Monte Carlo Simulation - Probabilistic Distribution",
+        "mc_header": "🎲 Monte Carlo Simulation",
         "mc_caption": "Get a probabilistic distribution instead of a single value",
         "mc_n_sim": "Number of Simulations",
         "mc_ea_unc": "Ea Uncertainty (%)",
@@ -160,7 +159,6 @@ TRANSLATIONS = {
         "abaqus_caption": "Download ready-to-use files for Abaqus/CAE",
         "abaqus_inp": "📄 Download INP File",
         "abaqus_py": "🐍 Download Python Script",
-        "abaqus_csv": "📥 Download Stress-Strain Data (CSV)",
         "abaqus_guide": "📖 Abaqus Usage Guide",
         "language": "🌐 اللغة / Language",
         "name": "Name",
@@ -186,16 +184,6 @@ def t(key):
 # ============================================================
 # دوال مساعدة
 # ============================================================
-def has_valid_experimental_data(prop):
-    data = prop.get("experimental_data")
-    if not data:
-        return False
-    for key, d in data.items():
-        if isinstance(d, dict) and d.get("y") and len(d["y"]) >= 2:
-            return True
-    return False
-
-
 def clean_text_for_pdf(text):
     import re
     cleaned = re.sub(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+', '', text)
@@ -434,7 +422,6 @@ st.markdown("""
 # ============================================================
 # اختيار اللغة + مسح الـ state لما اللغة تتغير
 # ============================================================
-# تهيئة اللغة الافتراضية
 if "language" not in st.session_state:
     st.session_state.language = "ar"
 
@@ -447,44 +434,21 @@ lang_choice = st.sidebar.radio(
 
 new_lang = "ar" if lang_choice == "العربية" else "en"
 
-# لو اللغة اتغيرت، امسح كل الـ widgets القديمة
 if st.session_state.language != new_lang:
-    # مسح المفاتيح المرتبطة بالـ widgets
     widget_prefixes = [
-        "propellant_selector_",
-        "prop_label_selector_",
-        "criterion_selector_",
-        "use_real_data_checkbox_",
-        "ea_slider_",
-        "threshold_slider_",
-        "storage_temp_input_",
-        "use_humidity_check_",
-        "rh_storage_slider_",
-        "rh_ref_input_",
-        "n_humidity_slider_",
-        "compare_type_A_",
-        "compare_type_B_",
-        "csv_prop_selector_",
-        "csv_uploader_main_",
-        "mc_n_sim_",
-        "mc_ea_unc_",
-        "mc_k_unc_",
-        "pdf_generate_btn_",
-        "pdf_download_btn_",
-        "abq_inp_btn_",
-        "abq_py_btn_",
-        "abq_inp_dl_",
-        "abq_py_dl_",
-        "compare_btn_key_",
-        "mc_run_btn_",
+        "propellant_selector_", "prop_label_selector_", "criterion_selector_",
+        "use_real_data_checkbox_", "ea_slider_", "threshold_slider_",
+        "storage_temp_input_", "use_humidity_check_", "rh_storage_slider_",
+        "rh_ref_input_", "n_humidity_slider_", "compare_type_A_",
+        "compare_type_B_", "csv_prop_selector_", "csv_uploader_main_",
+        "mc_n_sim_", "mc_ea_unc_", "mc_k_unc_", "pdf_generate_btn_",
+        "pdf_download_btn_", "abq_inp_btn_", "abq_py_btn_", "abq_inp_dl_",
+        "abq_py_dl_", "compare_btn_key_", "mc_run_btn_",
     ]
-    keys_to_delete = [
-        k for k in list(st.session_state.keys())
-        if any(k.startswith(prefix) for prefix in widget_prefixes)
-    ]
+    keys_to_delete = [k for k in list(st.session_state.keys())
+                      if any(k.startswith(p) for p in widget_prefixes)]
     for k in keys_to_delete:
         del st.session_state[k]
-
     st.session_state.language = new_lang
 
 st.sidebar.markdown("---")
@@ -506,13 +470,11 @@ propellant_key = st.sidebar.selectbox(
     key=f"propellant_selector_{lang_key}",
 )
 
-# فحص أمان
 if propellant_key not in PROPELLANT_TYPES:
     propellant_key = list(PROPELLANT_TYPES.keys())[0]
 
 prop = PROPELLANT_TYPES[propellant_key]
 
-# معلومات النوع
 prop_info = get_propellant_display_info(prop, propellant_key)
 st.sidebar.markdown(f"""
 **{t("prop_info")}:**
@@ -523,7 +485,7 @@ st.sidebar.markdown(f"""
 """)
 
 # ============================================================
-# اختيار الخاصية الحاكمة
+# اختيار الخاصية الحاكمة (مع الحل النهائي)
 # ============================================================
 st.sidebar.header(t("governing_property"))
 
@@ -532,7 +494,8 @@ if st.session_state.language == "en":
 else:
     prop_options = prop.get("properties_ar", {"young_modulus": "معامل يونج"})
 
-prop_options_inv = {v: k for k, v in prop_options.items()}
+# الحل النهائي: قاموس lookup معكوس (display -> key)
+prop_options_lookup = {v: k for k, v in prop_options.items()}
 
 if prop["has_real_data"]:
     use_real_data = st.sidebar.checkbox(
@@ -543,24 +506,17 @@ if prop["has_real_data"]:
 else:
     use_real_data = False
 
-prop_options_lookup = {v: k for k, v in prop_options.items()}
-
 prop_label = st.sidebar.selectbox(
     t("select_property"),
     list(prop_options_lookup.keys()),
     key=f"prop_label_selector_{lang_key}",
 )
 
+# فحص أمان
 if prop_label not in prop_options_lookup:
     prop_label = list(prop_options_lookup.keys())[0]
 
 prop_key = prop_options_lookup[prop_label]
-
-# فحص أمان
-if prop_label not in prop_options_inv:
-    prop_label = list(prop_options.keys())[0]
-
-prop_key = prop_options_inv[prop_label]
 
 # ============================================================
 # طاقة التنشيط
@@ -617,7 +573,6 @@ criterion = st.sidebar.selectbox(
     key=f"criterion_selector_{lang_key}",
 )
 
-# فحص أمان
 if criterion not in criteria_list:
     criterion = criteria_list[0]
 
@@ -649,18 +604,15 @@ use_humidity = st.sidebar.checkbox(
 
 if use_humidity:
     RH_storage = st.sidebar.slider(
-        t("rh_storage"),
-        0, 100, 50, 1,
+        t("rh_storage"), 0, 100, 50, 1,
         key=f"rh_storage_slider_{lang_key}",
     )
     RH_ref = st.sidebar.number_input(
-        t("rh_ref"),
-        value=50, min_value=1, max_value=100,
+        t("rh_ref"), value=50, min_value=1, max_value=100,
         key=f"rh_ref_input_{lang_key}",
     )
     n_humidity = st.sidebar.slider(
-        t("n_humidity"),
-        0.5, 3.0, 1.5, 0.1,
+        t("n_humidity"), 0.5, 3.0, 1.5, 0.1,
         key=f"n_humidity_slider_{lang_key}",
     )
 else:
@@ -983,8 +935,7 @@ if uploaded_file is not None:
                         k_vals = (y_vals / y0 - 1) / t_vals
                     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
                     results.append({
-                        'T_C': T,
-                        'T_K': T + 273.15,
+                        'T_C': T, 'T_K': T + 273.15,
                         'k': float(np.mean(k_vals)),
                         'n_points': len(sub),
                     })
@@ -1014,16 +965,12 @@ st.caption(t("comparison_caption"))
 col_a, col_b = st.columns(2)
 with col_a:
     type_A = st.selectbox(
-        t("type_a"),
-        list(PROPELLANT_TYPES.keys()),
-        index=0,
+        t("type_a"), list(PROPELLANT_TYPES.keys()), index=0,
         key=f"compare_type_A_{lang_key}",
     )
 with col_b:
     type_B = st.selectbox(
-        t("type_b"),
-        list(PROPELLANT_TYPES.keys()),
-        index=2,
+        t("type_b"), list(PROPELLANT_TYPES.keys()), index=2,
         key=f"compare_type_B_{lang_key}",
     )
 
@@ -1089,15 +1036,9 @@ with col_mc1:
         key=f"mc_n_sim_{lang_key}",
     )
 with col_mc2:
-    Ea_uncertainty = st.slider(
-        t("mc_ea_unc"), 0, 30, 10,
-        key=f"mc_ea_unc_{lang_key}",
-    )
+    Ea_uncertainty = st.slider(t("mc_ea_unc"), 0, 30, 10, key=f"mc_ea_unc_{lang_key}")
 with col_mc3:
-    k_uncertainty = st.slider(
-        t("mc_k_unc"), 0, 50, 20,
-        key=f"mc_k_unc_{lang_key}",
-    )
+    k_uncertainty = st.slider(t("mc_k_unc"), 0, 50, 20, key=f"mc_k_unc_{lang_key}")
 
 if st.button(t("mc_run"), type="primary", key=f"mc_run_btn_{lang_key}"):
     np.random.seed(42)
