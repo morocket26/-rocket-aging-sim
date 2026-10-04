@@ -43,11 +43,9 @@ TRANSLATIONS = {
         "life_days": "يوم",
         "failure_mode": "معيار الفشل",
         "duration_days": "المدة بالأيام",
-        "not_failed": "⚠️ الخاصية لم تصل لحد الفشل خلال 30 سنة",
         "comparison_header": "🌡️ مقارنة العمر عند درجات حرارة مختلفة",
         "temperature": "الحرارة (°C)",
         "k_per_day": "k (/day)",
-        "af_col": "معامل التسريع",
         "life_col": "العمر (سنة)",
         "pdf_header": "📄 تصدير تقرير PDF",
         "pdf_caption": "حمّل تقرير شامل يحتوي على كل النتائج والتحليلات",
@@ -60,7 +58,6 @@ TRANSLATIONS = {
         "csv_data": "📋 البيانات المرفوعة",
         "csv_analysis": "🔬 تحليل البيانات",
         "select_property_analysis": "اختر الخاصية للتحليل",
-        "arrhenius_plot": "Arrhenius Plot",
         "comparison_types": "⚔️ مقارنة تفصيلية بين نوعين من الوقود",
         "comparison_caption": "قارن بين نوعين: k، Ea، والعمر الافتراضي عند درجات حرارة مختلفة",
         "type_a": "النوع الأول (A)",
@@ -126,11 +123,9 @@ TRANSLATIONS = {
         "life_days": "days",
         "failure_mode": "Failure Criterion",
         "duration_days": "Duration in Days",
-        "not_failed": "⚠️ Property did not reach failure threshold within 30 years",
         "comparison_header": "🌡️ Shelf Life at Different Temperatures",
         "temperature": "Temperature (°C)",
         "k_per_day": "k (/day)",
-        "af_col": "Acceleration Factor",
         "life_col": "Life (years)",
         "pdf_header": "📄 Export PDF Report",
         "pdf_caption": "Download a comprehensive report with all results and analyses",
@@ -143,7 +138,6 @@ TRANSLATIONS = {
         "csv_data": "📋 Uploaded Data",
         "csv_analysis": "🔬 Data Analysis",
         "select_property_analysis": "Select property for analysis",
-        "arrhenius_plot": "Arrhenius Plot",
         "comparison_types": "⚔️ Head-to-Head Comparison Between Two Propellants",
         "comparison_caption": "Compare two types: k, Ea, and shelf life at various temperatures",
         "type_a": "Type A",
@@ -438,17 +432,62 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# اختيار اللغة
+# اختيار اللغة + مسح الـ state لما اللغة تتغير
 # ============================================================
+# تهيئة اللغة الافتراضية
+if "language" not in st.session_state:
+    st.session_state.language = "ar"
+
 lang_choice = st.sidebar.radio(
     "🌐 اللغة / Language",
     ["العربية", "English"],
     horizontal=True,
     key="lang_selector_main",
 )
-st.session_state.language = "ar" if lang_choice == "العربية" else "en"
-st.sidebar.markdown("---")
 
+new_lang = "ar" if lang_choice == "العربية" else "en"
+
+# لو اللغة اتغيرت، امسح كل الـ widgets القديمة
+if st.session_state.language != new_lang:
+    # مسح المفاتيح المرتبطة بالـ widgets
+    widget_prefixes = [
+        "propellant_selector_",
+        "prop_label_selector_",
+        "criterion_selector_",
+        "use_real_data_checkbox_",
+        "ea_slider_",
+        "threshold_slider_",
+        "storage_temp_input_",
+        "use_humidity_check_",
+        "rh_storage_slider_",
+        "rh_ref_input_",
+        "n_humidity_slider_",
+        "compare_type_A_",
+        "compare_type_B_",
+        "csv_prop_selector_",
+        "csv_uploader_main_",
+        "mc_n_sim_",
+        "mc_ea_unc_",
+        "mc_k_unc_",
+        "pdf_generate_btn_",
+        "pdf_download_btn_",
+        "abq_inp_btn_",
+        "abq_py_btn_",
+        "abq_inp_dl_",
+        "abq_py_dl_",
+        "compare_btn_key_",
+        "mc_run_btn_",
+    ]
+    keys_to_delete = [
+        k for k in list(st.session_state.keys())
+        if any(k.startswith(prefix) for prefix in widget_prefixes)
+    ]
+    for k in keys_to_delete:
+        del st.session_state[k]
+
+    st.session_state.language = new_lang
+
+st.sidebar.markdown("---")
 lang_key = st.session_state.language
 
 # ============================================================
@@ -510,7 +549,7 @@ prop_label = st.sidebar.selectbox(
     key=f"prop_label_selector_{lang_key}",
 )
 
-# فحص أمان: لو القيمة القديمة لسه موجودة
+# فحص أمان
 if prop_label not in prop_options_inv:
     prop_label = list(prop_options.keys())[0]
 
@@ -981,7 +1020,6 @@ with col_b:
         key=f"compare_type_B_{lang_key}",
     )
 
-# فحص أمان
 if type_A not in PROPELLANT_TYPES:
     type_A = list(PROPELLANT_TYPES.keys())[0]
 if type_B not in PROPELLANT_TYPES:
@@ -1179,4 +1217,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v2.2 | 2026")
+st.caption("Rocket Aging Simulation Platform | v2.3 | 2026")
