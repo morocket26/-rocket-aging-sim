@@ -182,6 +182,37 @@ def t(key):
 
 
 # ============================================================
+# خريطة معيار الفشل ← (الخاصية، النسبة)
+# ============================================================
+CRITERION_MAP = {
+    # Arabic
+    "زيادة معامل يونج 20%": ("young_modulus", 20.0),
+    "زيادة معامل يونج 25%": ("young_modulus", 25.0),
+    "تغير معامل يونج 15%": ("young_modulus", 15.0),
+    "زيادة الدفع الأقصى 15%": ("max_thrust", 15.0),
+    "زيادة الصلابة Shore A 10%": ("shore_A", 10.0),
+    "زيادة الصلابة Shore A 15%": ("shore_A", 15.0),
+    "استهلاك 50% من المُثبِّت": ("young_modulus", 50.0),
+    "استهلاك 40% من المُثبِّت": ("young_modulus", 40.0),
+    "انخفاض Elongation 30%": ("young_modulus", 30.0),
+    "انخفاض Elongation 25%": ("young_modulus", 25.0),
+    "فقدان وزن 2%": ("young_modulus", 2.0),
+    # English
+    "Young Modulus increase by 20%": ("young_modulus", 20.0),
+    "Young Modulus increase by 25%": ("young_modulus", 25.0),
+    "Young Modulus change by 15%": ("young_modulus", 15.0),
+    "Max Thrust increase by 15%": ("max_thrust", 15.0),
+    "Shore A increase by 10%": ("shore_A", 10.0),
+    "Shore A increase by 15%": ("shore_A", 15.0),
+    "Stabilizer depletion by 50%": ("young_modulus", 50.0),
+    "Stabilizer depletion by 40%": ("young_modulus", 40.0),
+    "Elongation decrease by 30%": ("young_modulus", 30.0),
+    "Elongation decrease by 25%": ("young_modulus", 25.0),
+    "Weight loss 2%": ("young_modulus", 2.0),
+}
+
+
+# ============================================================
 # دوال مساعدة
 # ============================================================
 def clean_text_for_pdf(text):
@@ -485,7 +516,32 @@ st.sidebar.markdown(f"""
 """)
 
 # ============================================================
-# اختيار الخاصية الحاكمة (مع الحل النهائي)
+# معيار الفشل (يحدد الخاصية + النسبة تلقائيًا)
+# ============================================================
+st.sidebar.header(t("failure_criterion"))
+
+if st.session_state.language == "en":
+    criteria_list = prop.get("failure_criteria_en", prop["failure_criteria"])
+else:
+    criteria_list = prop["failure_criteria"]
+
+criterion = st.sidebar.selectbox(
+    t("select_criterion"),
+    criteria_list,
+    key=f"criterion_selector_{lang_key}",
+)
+
+if criterion not in criteria_list:
+    criterion = criteria_list[0]
+
+# ربط معيار الفشل بالخاصية والنسبة
+if criterion in CRITERION_MAP:
+    criterion_prop_key, criterion_threshold = CRITERION_MAP[criterion]
+else:
+    criterion_prop_key, criterion_threshold = "young_modulus", 20.0
+
+# ============================================================
+# اختيار الخاصية الحاكمة
 # ============================================================
 st.sidebar.header(t("governing_property"))
 
@@ -494,7 +550,6 @@ if st.session_state.language == "en":
 else:
     prop_options = prop.get("properties_ar", {"young_modulus": "معامل يونج"})
 
-# الحل النهائي: قاموس lookup معكوس (display -> key)
 prop_options_lookup = {v: k for k, v in prop_options.items()}
 
 if prop["has_real_data"]:
@@ -506,17 +561,40 @@ if prop["has_real_data"]:
 else:
     use_real_data = False
 
+# نحاول نستخدم الخاصية اللي جاية من معيار الفشل (لو موجودة في النوع)
+if criterion_prop_key in prop_options_lookup.values():
+    default_prop_label = [k for k, v in prop_options_lookup.items()
+                          if v == criterion_prop_key][0]
+    default_idx = list(prop_options_lookup.keys()).index(default_prop_label)
+else:
+    default_idx = 0
+
 prop_label = st.sidebar.selectbox(
     t("select_property"),
     list(prop_options_lookup.keys()),
+    index=default_idx,
     key=f"prop_label_selector_{lang_key}",
 )
 
-# فحص أمان
 if prop_label not in prop_options_lookup:
     prop_label = list(prop_options_lookup.keys())[0]
 
 prop_key = prop_options_lookup[prop_label]
+
+# لو المستخدم مش اختار الخاصية يدويًا، نستخدم الخاصية من معيار الفشل
+if criterion_prop_key in prop_options_lookup.values() and prop_label == default_prop_label:
+    prop_key = criterion_prop_key
+
+# ============================================================
+# النسبة المسموحة
+# ============================================================
+threshold_pct = st.sidebar.slider(
+    t("allowed_change"),
+    min_value=5.0, max_value=50.0,
+    value=float(criterion_threshold),
+    step=1.0,
+    key=f"threshold_slider_{lang_key}",
+)
 
 # ============================================================
 # طاقة التنشيط
@@ -556,70 +634,6 @@ else:
         step=1.0,
         key=f"ea_slider_{lang_key}",
     )
-
-# ============================================================
-# معيار الفشل
-# ============================================================
-st.sidebar.header(t("failure_criterion"))
-
-if st.session_state.language == "en":
-    criteria_list = prop.get("failure_criteria_en", prop["failure_criteria"])
-else:
-    criteria_list = prop["failure_criteria"]
-
-criterion = st.sidebar.selectbox(
-    t("select_criterion"),
-    criteria_list,
-    key=f"criterion_selector_{lang_key}",
-)
-
-if criterion not in criteria_list:
-    criterion = criteria_list[0]
-
-# ============================================================
-# استخراج الخاصية والنسبة من نص معيار الفشل
-# ============================================================
-CRITERION_MAP = {
-    # Arabic criteria
-    "زيادة معامل يونج 20%": ("young_modulus", 20.0),
-    "زيادة معامل يونج 25%": ("young_modulus", 25.0),
-    "تغير معامل يونج 15%": ("young_modulus", 15.0),
-    "زيادة الدفع الأقصى 15%": ("max_thrust", 15.0),
-    "زيادة الصلابة Shore A 10%": ("shore_A", 10.0),
-    "زيادة الصلابة Shore A 15%": ("shore_A", 15.0),
-    "استهلاك 50% من المُثبِّت": ("young_modulus", 50.0),
-    "استهلاك 40% من المُثبِّت": ("young_modulus", 40.0),
-    "انخفاض Elongation 30%": ("young_modulus", 30.0),
-    "انخفاض Elongation 25%": ("young_modulus", 25.0),
-    "فقدان وزن 2%": ("young_modulus", 2.0),
-    # English criteria
-    "Young Modulus increase by 20%": ("young_modulus", 20.0),
-    "Young Modulus increase by 25%": ("young_modulus", 25.0),
-    "Young Modulus change by 15%": ("young_modulus", 15.0),
-    "Max Thrust increase by 15%": ("max_thrust", 15.0),
-    "Shore A increase by 10%": ("shore_A", 10.0),
-    "Shore A increase by 15%": ("shore_A", 15.0),
-    "Stabilizer depletion by 50%": ("young_modulus", 50.0),
-    "Stabilizer depletion by 40%": ("young_modulus", 40.0),
-    "Elongation decrease by 30%": ("young_modulus", 30.0),
-    "Elongation decrease by 25%": ("young_modulus", 25.0),
-    "Weight loss 2%": ("young_modulus", 2.0),
-}
-
-# تطبيق المعيار على الخاصية والنسبة
-if criterion in CRITERION_MAP:
-    criterion_prop_key, criterion_threshold = CRITERION_MAP[criterion]
-    # التحقق إن الخاصية موجودة في بيانات النوع
-    if criterion_prop_key in prop_options_lookup.values():
-        prop_key = criterion_prop_key
-        prop_label = [k for k, v in prop_options_lookup.items() if v == prop_key][0]
-        threshold_pct = criterion_threshold
-
-threshold_pct = st.sidebar.slider(
-    t("allowed_change"),
-    min_value=5.0, max_value=50.0, value=20.0, step=1.0,
-    key=f"threshold_slider_{lang_key}",
-)
 
 # ============================================================
 # ظروف التخزين
@@ -1204,4 +1218,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v2.3 | 2026")
+st.caption("Rocket Aging Simulation Platform | v3.0 | 2026")
