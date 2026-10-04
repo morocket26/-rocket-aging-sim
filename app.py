@@ -274,6 +274,38 @@ T_storage_C = st.sidebar.number_input(
 )
 
 # ============================================================
+# ظروف الرطوبة (Peck Model)
+# ============================================================
+st.sidebar.header("💧 ظروف الرطوبة")
+use_humidity = st.sidebar.checkbox(
+    "تفعيل تأثير الرطوبة (Peck Model)",
+    value=False,
+    help="يستخدم نموذج Peck لدمج تأثير الرطوبة مع الحرارة",
+    key="use_humidity_check",
+)
+
+if use_humidity:
+    RH_storage = st.sidebar.slider(
+        "الرطوبة النسبية (%)",
+        0, 100, 50, 1,
+        key="rh_storage_slider",
+    )
+    RH_ref = st.sidebar.number_input(
+        "الرطوبة المرجعية (%)",
+        value=50, min_value=1, max_value=100,
+        key="rh_ref_input",
+    )
+    n_humidity = st.sidebar.slider(
+        "معامل الرطوبة n",
+        0.5, 3.0, 1.5, 0.1,
+        help="عادة 1-3 للبوليمرات",
+        key="n_humidity_slider",
+    )
+else:
+    RH_storage = 50.0
+    RH_ref = 50.0
+    n_humidity = 1.0
+# ============================================================
 # الحسابات
 # ============================================================
 Ea = Ea_kJ * 1000
