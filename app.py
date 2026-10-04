@@ -379,6 +379,7 @@ st.header("⏳ العمر الافتراضي")
 
 k_effective = k_storage * RH_factor_storage
 t_fail_days = (threshold_pct / 100) / k_effective
+t_fail_years = t_fail_days / 365
 
 st.markdown(f"""
 <div class="success-box">
