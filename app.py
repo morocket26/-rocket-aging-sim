@@ -434,7 +434,7 @@ threshold_pct = st.sidebar.slider(
 # ============================================================
 # ظروف التخزين
 # ============================================================
-st.sidebar.header(t("storage_header
+st.sidebar.header(t("storage_header))
 T_storage_C = st.sidebar.number_input(
     "درجة حرارة التخزين (°C)",
     value=25.0, step=1.0,
