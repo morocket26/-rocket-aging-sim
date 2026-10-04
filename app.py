@@ -338,7 +338,15 @@ def k_at(T_K):
 
 k_storage = k_at(T_storage_K)
 k_ref = k_at(T_ref_K)
-AF = k_storage / k_ref
+# حساب عامل الرطوبة (Peck Model)
+if use_humidity:
+    RH_factor_storage = (RH_storage / RH_ref) ** n_humidity
+    RH_factor_ref = 1.0
+else:
+    RH_factor_storage = 1.0
+    RH_factor_ref = 1.0
+
+AF = (k_storage * RH_factor_storage) / (k_ref * RH_factor_ref)
 
 # ============================================================
 # عرض المعلومات
@@ -369,8 +377,8 @@ col3.metric("📅 k عند 25°C", f"{k_ref:.4e} /day")
 # ============================================================
 st.header("⏳ العمر الافتراضي")
 
-t_fail_days = (threshold_pct / 100) / k_storage
-t_fail_years = t_fail_days / 365
+k_effective = k_storage * RH_factor_storage
+t_fail_days = (threshold_pct / 100) / k_effective
 
 st.markdown(f"""
 <div class="success-box">
