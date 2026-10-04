@@ -576,6 +576,45 @@ criterion = st.sidebar.selectbox(
 if criterion not in criteria_list:
     criterion = criteria_list[0]
 
+# ============================================================
+# استخراج الخاصية والنسبة من نص معيار الفشل
+# ============================================================
+CRITERION_MAP = {
+    # Arabic criteria
+    "زيادة معامل يونج 20%": ("young_modulus", 20.0),
+    "زيادة معامل يونج 25%": ("young_modulus", 25.0),
+    "تغير معامل يونج 15%": ("young_modulus", 15.0),
+    "زيادة الدفع الأقصى 15%": ("max_thrust", 15.0),
+    "زيادة الصلابة Shore A 10%": ("shore_A", 10.0),
+    "زيادة الصلابة Shore A 15%": ("shore_A", 15.0),
+    "استهلاك 50% من المُثبِّت": ("young_modulus", 50.0),
+    "استهلاك 40% من المُثبِّت": ("young_modulus", 40.0),
+    "انخفاض Elongation 30%": ("young_modulus", 30.0),
+    "انخفاض Elongation 25%": ("young_modulus", 25.0),
+    "فقدان وزن 2%": ("young_modulus", 2.0),
+    # English criteria
+    "Young Modulus increase by 20%": ("young_modulus", 20.0),
+    "Young Modulus increase by 25%": ("young_modulus", 25.0),
+    "Young Modulus change by 15%": ("young_modulus", 15.0),
+    "Max Thrust increase by 15%": ("max_thrust", 15.0),
+    "Shore A increase by 10%": ("shore_A", 10.0),
+    "Shore A increase by 15%": ("shore_A", 15.0),
+    "Stabilizer depletion by 50%": ("young_modulus", 50.0),
+    "Stabilizer depletion by 40%": ("young_modulus", 40.0),
+    "Elongation decrease by 30%": ("young_modulus", 30.0),
+    "Elongation decrease by 25%": ("young_modulus", 25.0),
+    "Weight loss 2%": ("young_modulus", 2.0),
+}
+
+# تطبيق المعيار على الخاصية والنسبة
+if criterion in CRITERION_MAP:
+    criterion_prop_key, criterion_threshold = CRITERION_MAP[criterion]
+    # التحقق إن الخاصية موجودة في بيانات النوع
+    if criterion_prop_key in prop_options_lookup.values():
+        prop_key = criterion_prop_key
+        prop_label = [k for k, v in prop_options_lookup.items() if v == prop_key][0]
+        threshold_pct = criterion_threshold
+
 threshold_pct = st.sidebar.slider(
     t("allowed_change"),
     min_value=5.0, max_value=50.0, value=20.0, step=1.0,
