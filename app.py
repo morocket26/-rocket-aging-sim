@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
-تدعم 5 أنواع وقود + تقادم معجل + رطوبة + Abaqus + لغتين
+v3.1 - Auto-sync between failure criterion and governing property
 """
 import streamlit as st
 import numpy as np
@@ -185,7 +185,6 @@ def t(key):
 # خريطة معيار الفشل ← (الخاصية، النسبة)
 # ============================================================
 CRITERION_MAP = {
-    # Arabic
     "زيادة معامل يونج 20%": ("young_modulus", 20.0),
     "زيادة معامل يونج 25%": ("young_modulus", 25.0),
     "تغير معامل يونج 15%": ("young_modulus", 15.0),
@@ -197,7 +196,6 @@ CRITERION_MAP = {
     "انخفاض Elongation 30%": ("young_modulus", 30.0),
     "انخفاض Elongation 25%": ("young_modulus", 25.0),
     "فقدان وزن 2%": ("young_modulus", 2.0),
-    # English
     "Young Modulus increase by 20%": ("young_modulus", 20.0),
     "Young Modulus increase by 25%": ("young_modulus", 25.0),
     "Young Modulus change by 15%": ("young_modulus", 15.0),
@@ -516,7 +514,17 @@ st.sidebar.markdown(f"""
 """)
 
 # ============================================================
-# معيار الفشل (يحدد الخاصية + النسبة تلقائيًا)
+# تعريف قواميس الخصائص (قبل معيار الفشل للمزامنة)
+# ============================================================
+if st.session_state.language == "en":
+    prop_options = prop.get("properties_en", {"young_modulus": "Young Modulus"})
+else:
+    prop_options = prop.get("properties_ar", {"young_modulus": "معامل يونج"})
+
+prop_options_lookup = {v: k for k, v in prop_options.items()}
+
+# ============================================================
+# معيار الفشل (مع المزامنة التلقائية)
 # ============================================================
 st.sidebar.header(t("failure_criterion"))
 
@@ -534,23 +542,31 @@ criterion = st.sidebar.selectbox(
 if criterion not in criteria_list:
     criterion = criteria_list[0]
 
-# ربط معيار الفشل بالخاصية والنسبة
-if criterion in CRITERION_MAP:
-    criterion_prop_key, criterion_threshold = CRITERION_MAP[criterion]
-else:
-    criterion_prop_key, criterion_threshold = "young_modulus", 20.0
+# ====== المزامنة التلقائية ======
+if "prev_criterion" not in st.session_state:
+    st.session_state.prev_criterion = criterion
+
+if st.session_state.prev_criterion != criterion:
+    st.session_state.prev_criterion = criterion
+    if criterion in CRITERION_MAP:
+        c_prop_key, c_thresh = CRITERION_MAP[criterion]
+        
+        # تحديد اسم العرض للخاصية
+        if st.session_state.language == "en":
+            c_prop_display = prop.get("properties_en", {}).get(c_prop_key)
+        else:
+            c_prop_display = prop.get("properties_ar", {}).get(c_prop_key)
+            
+        if c_prop_display:
+            st.session_state[f"prop_label_selector_{lang_key}"] = c_prop_display
+            
+        st.session_state[f"threshold_slider_{lang_key}"] = float(c_thresh)
+# ================================
 
 # ============================================================
 # اختيار الخاصية الحاكمة
 # ============================================================
 st.sidebar.header(t("governing_property"))
-
-if st.session_state.language == "en":
-    prop_options = prop.get("properties_en", {"young_modulus": "Young Modulus"})
-else:
-    prop_options = prop.get("properties_ar", {"young_modulus": "معامل يونج"})
-
-prop_options_lookup = {v: k for k, v in prop_options.items()}
 
 if prop["has_real_data"]:
     use_real_data = st.sidebar.checkbox(
@@ -561,18 +577,9 @@ if prop["has_real_data"]:
 else:
     use_real_data = False
 
-# نحاول نستخدم الخاصية اللي جاية من معيار الفشل (لو موجودة في النوع)
-if criterion_prop_key in prop_options_lookup.values():
-    default_prop_label = [k for k, v in prop_options_lookup.items()
-                          if v == criterion_prop_key][0]
-    default_idx = list(prop_options_lookup.keys()).index(default_prop_label)
-else:
-    default_idx = 0
-
 prop_label = st.sidebar.selectbox(
     t("select_property"),
     list(prop_options_lookup.keys()),
-    index=default_idx,
     key=f"prop_label_selector_{lang_key}",
 )
 
@@ -581,17 +588,12 @@ if prop_label not in prop_options_lookup:
 
 prop_key = prop_options_lookup[prop_label]
 
-# لو المستخدم مش اختار الخاصية يدويًا، نستخدم الخاصية من معيار الفشل
-if criterion_prop_key in prop_options_lookup.values() and prop_label == default_prop_label:
-    prop_key = criterion_prop_key
-
 # ============================================================
 # النسبة المسموحة
 # ============================================================
 threshold_pct = st.sidebar.slider(
     t("allowed_change"),
     min_value=5.0, max_value=50.0,
-    value=float(criterion_threshold),
     step=1.0,
     key=f"threshold_slider_{lang_key}",
 )
@@ -1218,4 +1220,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v3.0 | 2026")
+st.caption("Rocket Aging Simulation Platform | v3.1 | 2026")
