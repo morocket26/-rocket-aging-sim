@@ -666,7 +666,6 @@ def generate_pdf_report():
     pdf.ln(2)
 
     pdf.set_font("Arial", "", 10)
-           # اسم الخاصية بالإنجليزي
         prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
         param_lines = [
             f"Governing Property: {prop_label_en}",
