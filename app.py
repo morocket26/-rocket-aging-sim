@@ -1,3 +1,161 @@
+# ============================================================
+# قاموس الترجمات (Translations Dictionary)
+# ============================================================
+TRANSLATIONS = {
+    "ar": {
+        "title": "🚀 منصة محاكاة اختبارات التقادم",
+        "caption": "وقود صاروخي صلب | 5 أنواع مدعومة | معايرة ببيانات تجريبية",
+        "propellant_type": "🔥 نوع الوقود",
+        "select_propellant": t("select_propellant"),
+        "prop_info": "📌 معلومات النوع",
+        "governing_property": "🎯 الخاصية الحاكمة",
+        "select_property": "اختر الخاصية",
+        "use_exp_data": "استخدام البيانات التجريبية (65°C)",
+        "ea_header": "🌡️ طاقة التنشيط Ea",
+        "failure_criterion": "⚠️ معيار الفشل",
+        "select_criterion": "اختر المعيار",
+        "allowed_change": "النسبة المسموحة (%)",
+        "storage_header": "📦 ظروف التخزين",
+        "storage_temp": "درجة حرارة التخزين (°C)",
+        "humidity_header": "💧 ظروف الرطوبة",
+        "use_humidity": "تفعيل تأثير الرطوبة (Peck Model)",
+        "rh_storage": "الرطوبة النسبية (%)",
+        "rh_ref": "الرطوبة المرجعية (%)",
+        "n_humidity": "معامل الرطوبة n",
+        "results_header": "📊 النتائج",
+        "af_label": "⚡ معامل التسريع AF",
+        "k_storage": "🌡️ k عند التخزين",
+        "k_ref": "📅 k عند 25°C",
+        "life_header": "⏳ العمر الافتراضي",
+        "life_years": "سنة",
+        "life_days": "يوم",
+        "failure_mode": "معيار الفشل",
+        "duration_days": "المدة بالأيام",
+        "not_failed": "⚠️ الخاصية لم تصل لحد الفشل خلال 30 سنة",
+        "comparison_header": "🌡️ مقارنة العمر عند درجات حرارة مختلفة",
+        "temperature": "الحرارة (°C)",
+        "k_per_day": "k (/day)",
+        "af_col": "معامل التسريع",
+        "life_col": "العمر (سنة)",
+        "pdf_header": "📄 تصدير تقرير PDF",
+        "pdf_caption": "حمّل تقرير شامل يحتوي على كل النتائج والتحليلات",
+        "pdf_generate": "📥 إنشاء التقرير PDF",
+        "pdf_download": "💾 تحميل التقرير PDF",
+        "csv_header": "📤 رفع بيانات تجريبية جديدة (CSV)",
+        "csv_caption": "ارفع ملف CSV فيه بيانات التقادم المعجل لتحليلها فورًا",
+        "csv_upload": "اختر ملف CSV",
+        "csv_success": "✅ تم رفع الملف بنجاح!",
+        "csv_data": "📋 البيانات المرفوعة",
+        "csv_analysis": "🔬 تحليل البيانات",
+        "select_property_analysis": "اختر الخاصية للتحليل",
+        "arrhenius_plot": "Arrhenius Plot",
+        "comparison_types": "⚔️ مقارنة تفصيلية بين نوعين من الوقود",
+        "comparison_caption": "قارن بين نوعين: k، Ea، والعمر الافتراضي عند درجات حرارة مختلفة",
+        "type_a": "النوع الأول (A)",
+        "type_b": "النوع الثاني (B)",
+        "compare_btn": "🔍 قارن الآن",
+        "comparison_curve": "📈 منحنى العمر الافتراضي مقابل درجة الحرارة",
+        "mc_header": "🎲 محاكاة Monte Carlo - التوزيع الاحتمالي",
+        "mc_caption": "بدل رقم واحد، هتطلعلك عيّنة احتمالية للعمر بناءً على عدم اليقين",
+        "mc_n_sim": "عدد مرات المحاكاة",
+        "mc_ea_unc": "عدم اليقين في Ea (%)",
+        "mc_k_unc": "عدم اليقين في k (%)",
+        "mc_run": "🎲 تشغيل Monte Carlo",
+        "mc_results": "📊 نتائج Monte Carlo",
+        "mc_mean": "المتوسط",
+        "mc_median": "الوسيط",
+        "mc_p5": "P5 (تحفظي)",
+        "mc_p95": "P95 (متفائل)",
+        "years": "سنة",
+        "abaqus_header": "🔧 تصدير البيانات لـ Abaqus",
+        "abaqus_caption": "حمّل الملفات الجاهزة للتشغيل في برنامج Abaqus/CAE",
+        "abaqus_inp": "📄 تحميل ملف INP",
+        "abaqus_py": "🐍 تحميل سكريبت Python",
+        "abaqus_csv": "📥 تحميل بيانات الإجهاد-الانفعال (CSV)",
+        "abaqus_guide": "📖 دليل استخدام ملفات Abaqus",
+        "language": "🌐 اللغة / Language",
+    },
+    "en": {
+        "title": "🚀 Aging Simulation Platform",
+        "caption": "Solid Rocket Propellant | 5 Types Supported | Data-Calibrated",
+        "propellant_type": "🔥 Propellant Type",
+        "select_propellant": "Select Propellant",
+        "prop_info": "📌 Propellant Info",
+        "governing_property": "🎯 Governing Property",
+        "select_property": "Select Property",
+        "use_exp_data": "Use Experimental Data (65°C)",
+        "ea_header": "🌡️ Activation Energy Ea",
+        "failure_criterion": "⚠️ Failure Criterion",
+        "select_criterion": "Select Criterion",
+        "allowed_change": "Allowed Change (%)",
+        "storage_header": "📦 Storage Conditions",
+        "storage_temp": "Storage Temperature (°C)",
+        "humidity_header": "💧 Humidity Conditions",
+        "use_humidity": "Enable Humidity Effect (Peck Model)",
+        "rh_storage": "Relative Humidity (%)",
+        "rh_ref": "Reference Humidity (%)",
+        "n_humidity": "Humidity Factor n",
+        "results_header": "📊 Results",
+        "af_label": "⚡ Acceleration Factor AF",
+        "k_storage": "🌡️ k at Storage",
+        "k_ref": "📅 k at 25°C",
+        "life_header": "⏳ Estimated Shelf Life",
+        "life_years": "years",
+        "life_days": "days",
+        "failure_mode": "Failure Criterion",
+        "duration_days": "Duration in Days",
+        "not_failed": "⚠️ Property did not reach failure threshold within 30 years",
+        "comparison_header": "🌡️ Shelf Life at Different Temperatures",
+        "temperature": "Temperature (°C)",
+        "k_per_day": "k (/day)",
+        "af_col": "Acceleration Factor",
+        "life_col": "Life (years)",
+        "pdf_header": "📄 Export PDF Report",
+        "pdf_caption": "Download a comprehensive report with all results and analyses",
+        "pdf_generate": "📥 Generate PDF Report",
+        "pdf_download": "💾 Download PDF Report",
+        "csv_header": "📤 Upload New Experimental Data (CSV)",
+        "csv_caption": "Upload CSV file with accelerated aging data for immediate analysis",
+        "csv_upload": "Choose CSV file",
+        "csv_success": "✅ File uploaded successfully!",
+        "csv_data": "📋 Uploaded Data",
+        "csv_analysis": "🔬 Data Analysis",
+        "select_property_analysis": "Select property for analysis",
+        "arrhenius_plot": "Arrhenius Plot",
+        "comparison_types": "⚔️ Head-to-Head Comparison Between Two Propellants",
+        "comparison_caption": "Compare two types: k, Ea, and shelf life at various temperatures",
+        "type_a": "Type A",
+        "type_b": "Type B",
+        "compare_btn": "🔍 Compare Now",
+        "comparison_curve": "📈 Shelf Life vs Temperature",
+        "mc_header": "🎲 Monte Carlo Simulation - Probabilistic Distribution",
+        "mc_caption": "Get a probabilistic distribution instead of a single value",
+        "mc_n_sim": "Number of Simulations",
+        "mc_ea_unc": "Ea Uncertainty (%)",
+        "mc_k_unc": "k Uncertainty (%)",
+        "mc_run": "🎲 Run Monte Carlo",
+        "mc_results": "📊 Monte Carlo Results",
+        "mc_mean": "Mean",
+        "mc_median": "Median",
+        "mc_p5": "P5 (Conservative)",
+        "mc_p95": "P95 (Optimistic)",
+        "years": "years",
+        "abaqus_header": "🔧 Export Data to Abaqus",
+        "abaqus_caption": "Download ready-to-use files for Abaqus/CAE",
+        "abaqus_inp": "📄 Download INP File",
+        "abaqus_py": "🐍 Download Python Script",
+        "abaqus_csv": "📥 Download Stress-Strain Data (CSV)",
+        "abaqus_guide": "📖 Abaqus Usage Guide",
+        "language": "🌐 اللغة / Language",
+    },
+}
+
+
+def t(key):
+    """دالة الترجمة - ترجع النص حسب اللغة المختارة"""
+    if "language" not in st.session_state:
+        st.session_state.language = "ar"
+    return TRANSLATIONS[st.session_state.language].get(key, key)
 # -*- coding: utf-8 -*-
 """
 منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
@@ -166,15 +324,25 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 منصة محاكاة اختبارات التقادم")
+st.title(t("title"))
+st.caption(t("caption"))
 st.caption("وقود صاروخي صلب | 5 أنواع مدعومة | معايرة ببيانات تجريبية")
 
 # ============================================================
 # الشريط الجانبي: اختيار نوع الوقود
 # ============================================================
-st.sidebar.header("🔥 نوع الوقود")
+# اختيار اللغة
+lang_choice = st.sidebar.radio(
+    "🌐 اللغة / Language",
+    ["العربية", "English"],
+    horizontal=True,
+    key="lang_selector",
+)
+st.session_state.language = "ar" if lang_choice == "العربية" else "en"
+st.sidebar.markdown("---")
+st.sidebar.header(t("propellant_type"))
 propellant_key = st.sidebar.selectbox(
-    "اختر نوع الوقود",
+    t("select_propellant"),
     list(PROPELLANT_TYPES.keys()),
 )
 
@@ -192,8 +360,7 @@ st.sidebar.markdown(f"""
 # ============================================================
 # اختيار الخاصية الحاكمة
 # ============================================================
-st.sidebar.header("🎯 الخاصية الحاكمة")
-
+st.sidebar.header(t("governing_property"))
 if prop["has_real_data"]:
     prop_options = {
         "معامل يونج": "young_modulus",
@@ -253,8 +420,7 @@ else:
 # ============================================================
 # معيار الفشل
 # ============================================================
-st.sidebar.header("⚠️ معيار الفشل")
-criterion = st.sidebar.selectbox(
+st.sidebar.header(t("failure_criterion"))criterion = st.sidebar.selectbox(
     "اختر المعيار",
     prop["failure_criteria"],
 )
@@ -267,8 +433,7 @@ threshold_pct = st.sidebar.slider(
 # ============================================================
 # ظروف التخزين
 # ============================================================
-st.sidebar.header("📦 ظروف التخزين")
-T_storage_C = st.sidebar.number_input(
+st.sidebar.header(t("storage_header"))T_storage_C = st.sidebar.number_input(
     "درجة حرارة التخزين (°C)",
     value=25.0, step=1.0,
 )
@@ -276,8 +441,7 @@ T_storage_C = st.sidebar.number_input(
 # ============================================================
 # ظروف الرطوبة (Peck Model)
 # ============================================================
-st.sidebar.header("💧 ظروف الرطوبة")
-use_humidity = st.sidebar.checkbox(
+st.sidebar.header(t("humidity_header"))use_humidity = st.sidebar.checkbox(
     "تفعيل تأثير الرطوبة (Peck Model)",
     value=False,
     help="يستخدم نموذج Peck لدمج تأثير الرطوبة مع الحرارة",
