@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
-v3.1 - Auto-sync between failure criterion and governing property
+v4.0 - User-controllable failure criterion percentages
 """
 import streamlit as st
 import numpy as np
@@ -25,7 +25,7 @@ TRANSLATIONS = {
         "use_exp_data": "استخدام البيانات التجريبية (65°C)",
         "ea_header": "🌡️ طاقة التنشيط Ea",
         "failure_criterion": "⚠️ معيار الفشل",
-        "select_criterion": "اختر المعيار",
+        "criterion_type_label": "نوع معيار الفشل",
         "allowed_change": "النسبة المسموحة (%)",
         "storage_header": "📦 ظروف التخزين",
         "storage_temp": "درجة حرارة التخزين (°C)",
@@ -104,7 +104,7 @@ TRANSLATIONS = {
         "use_exp_data": "Use Experimental Data (65°C)",
         "ea_header": "🌡️ Activation Energy Ea",
         "failure_criterion": "⚠️ Failure Criterion",
-        "select_criterion": "Select Criterion",
+        "criterion_type_label": "Failure Criterion Type",
         "allowed_change": "Allowed Change (%)",
         "storage_header": "📦 Storage Conditions",
         "storage_temp": "Storage Temperature (°C)",
@@ -182,31 +182,44 @@ def t(key):
 
 
 # ============================================================
-# خريطة معيار الفشل ← (الخاصية، النسبة)
+# أنواع معايير الفشل (بدون نسبة - المستخدم يحددها)
 # ============================================================
-CRITERION_MAP = {
-    "زيادة معامل يونج 20%": ("young_modulus", 20.0),
-    "زيادة معامل يونج 25%": ("young_modulus", 25.0),
-    "تغير معامل يونج 15%": ("young_modulus", 15.0),
-    "زيادة الدفع الأقصى 15%": ("max_thrust", 15.0),
-    "زيادة الصلابة Shore A 10%": ("shore_A", 10.0),
-    "زيادة الصلابة Shore A 15%": ("shore_A", 15.0),
-    "استهلاك 50% من المُثبِّت": ("young_modulus", 50.0),
-    "استهلاك 40% من المُثبِّت": ("young_modulus", 40.0),
-    "انخفاض Elongation 30%": ("young_modulus", 30.0),
-    "انخفاض Elongation 25%": ("young_modulus", 25.0),
-    "فقدان وزن 2%": ("young_modulus", 2.0),
-    "Young Modulus increase by 20%": ("young_modulus", 20.0),
-    "Young Modulus increase by 25%": ("young_modulus", 25.0),
-    "Young Modulus change by 15%": ("young_modulus", 15.0),
-    "Max Thrust increase by 15%": ("max_thrust", 15.0),
-    "Shore A increase by 10%": ("shore_A", 10.0),
-    "Shore A increase by 15%": ("shore_A", 15.0),
-    "Stabilizer depletion by 50%": ("young_modulus", 50.0),
-    "Stabilizer depletion by 40%": ("young_modulus", 40.0),
-    "Elongation decrease by 30%": ("young_modulus", 30.0),
-    "Elongation decrease by 25%": ("young_modulus", 25.0),
-    "Weight loss 2%": ("young_modulus", 2.0),
+# قاموس: نوع المعيار → الخاصية المرتبطة
+CRITERION_TYPE_TO_PROPERTY = {
+    # Arabic
+    "زيادة معامل يونج": "young_modulus",
+    "زيادة الصلابة Shore A": "shore_A",
+    "زيادة الدفع الأقصى": "max_thrust",
+    "استهلاك المُثبِّت": "young_modulus",
+    "انخفاض Elongation": "young_modulus",
+    "فقدان وزن": "young_modulus",
+    # English
+    "Young Modulus increase": "young_modulus",
+    "Shore A increase": "shore_A",
+    "Max Thrust increase": "max_thrust",
+    "Stabilizer depletion": "young_modulus",
+    "Elongation decrease": "young_modulus",
+    "Weight loss": "young_modulus",
+}
+
+# قوالب نصية (مع مكان النسبة)
+CRITERION_TEXT_TEMPLATES = {
+    "ar": {
+        "زيادة معامل يونج": "زيادة معامل يونج {pct:.0f}%",
+        "زيادة الصلابة Shore A": "زيادة الصلابة Shore A {pct:.0f}%",
+        "زيادة الدفع الأقصى": "زيادة الدفع الأقصى {pct:.0f}%",
+        "استهلاك المُثبِّت": "استهلاك {pct:.0f}% من المُثبِّت",
+        "انخفاض Elongation": "انخفاض Elongation {pct:.0f}%",
+        "فقدان وزن": "فقدان وزن {pct:.0f}%",
+    },
+    "en": {
+        "Young Modulus increase": "Young Modulus increase by {pct:.0f}%",
+        "Shore A increase": "Shore A increase by {pct:.0f}%",
+        "Max Thrust increase": "Max Thrust increase by {pct:.0f}%",
+        "Stabilizer depletion": "Stabilizer depletion by {pct:.0f}%",
+        "Elongation decrease": "Elongation decrease by {pct:.0f}%",
+        "Weight loss": "Weight loss {pct:.0f}%",
+    },
 }
 
 
@@ -246,16 +259,6 @@ PROPELLANT_TYPES = {
         "Ea_range": (110.0, 140.0),
         "aging_mechanism": "استهلاك المُثبِّت + أكسدة AP/Al",
         "stabilizers": "2-NDPA + مضادات أكسدة",
-        "failure_criteria": [
-            "زيادة معامل يونج 20%",
-            "زيادة الدفع الأقصى 15%",
-            "زيادة الصلابة Shore A 10%",
-        ],
-        "failure_criteria_en": [
-            "Young Modulus increase by 20%",
-            "Max Thrust increase by 15%",
-            "Shore A increase by 10%",
-        ],
         "reference": "Asthana et al., Solid Propellant Chemistry",
         "aging_mechanism_en": "Stabilizer depletion (2-NDPA, Carbamite) + AP/NG interaction",
         "stabilizers_en": "2-NDPA, Carbamite (EC), MNA",
@@ -302,16 +305,6 @@ PROPELLANT_TYPES = {
         "Ea_range": (100.0, 130.0),
         "aging_mechanism": "تحلل الإسترات النيتراتية → استهلاك المُثبِّت",
         "stabilizers": "2-NDPA, Ethyl Centralite, Akardite II",
-        "failure_criteria": [
-            "استهلاك 50% من المُثبِّت",
-            "زيادة معامل يونج 20%",
-            "زيادة الصلابة Shore A 10%",
-        ],
-        "failure_criteria_en": [
-            "Stabilizer depletion by 50%",
-            "Young Modulus increase by 20%",
-            "Shore A increase by 10%",
-        ],
         "reference": "NATO STO-MP-AVT-268 (2017)",
         "aging_mechanism_en": "Nitrate ester decomposition → Stabilizer depletion",
         "stabilizers_en": "2-NDPA, Ethyl Centralite, Akardite II",
@@ -334,16 +327,6 @@ PROPELLANT_TYPES = {
         "Ea_range": (80.0, 100.0),
         "aging_mechanism": "أكسدة الـ binder + تكوين روابط عرضية",
         "stabilizers": "مضادات أكسدة (Antioxidants)",
-        "failure_criteria": [
-            "انخفاض Elongation 30%",
-            "زيادة الصلابة Shore A 15%",
-            "زيادة معامل يونج 25%",
-        ],
-        "failure_criteria_en": [
-            "Elongation decrease by 30%",
-            "Shore A increase by 15%",
-            "Young Modulus increase by 25%",
-        ],
         "reference": "Shekhar, Prediction of Shelf Life (2014)",
         "aging_mechanism_en": "Binder oxidation + crosslinking",
         "stabilizers_en": "Antioxidants",
@@ -366,16 +349,6 @@ PROPELLANT_TYPES = {
         "Ea_range": (120.0, 150.0),
         "aging_mechanism": "تحلل الإسترات + هجرة plasticizer",
         "stabilizers": "مُثبِّتات خاصة",
-        "failure_criteria": [
-            "استهلاك 40% من المُثبِّت",
-            "تغير معامل يونج 15%",
-            "فقدان وزن 2%",
-        ],
-        "failure_criteria_en": [
-            "Stabilizer depletion by 40%",
-            "Young Modulus change by 15%",
-            "Weight loss 2%",
-        ],
         "reference": "NATO STO-TR-AVT-171",
         "aging_mechanism_en": "Nitrate ester decomposition + plasticizer migration",
         "stabilizers_en": "Special stabilizers",
@@ -398,14 +371,6 @@ PROPELLANT_TYPES = {
         "Ea_range": (90.0, 110.0),
         "aging_mechanism": "أكسدة البوليمر",
         "stabilizers": "مضادات أكسدة",
-        "failure_criteria": [
-            "انخفاض Elongation 25%",
-            "زيادة معامل يونج 20%",
-        ],
-        "failure_criteria_en": [
-            "Elongation decrease by 25%",
-            "Young Modulus increase by 20%",
-        ],
         "reference": "Insensitive Munitions Program Reports",
         "aging_mechanism_en": "Polymer oxidation",
         "stabilizers_en": "Antioxidants",
@@ -465,14 +430,14 @@ new_lang = "ar" if lang_choice == "العربية" else "en"
 
 if st.session_state.language != new_lang:
     widget_prefixes = [
-        "propellant_selector_", "prop_label_selector_", "criterion_selector_",
-        "use_real_data_checkbox_", "ea_slider_", "threshold_slider_",
-        "storage_temp_input_", "use_humidity_check_", "rh_storage_slider_",
-        "rh_ref_input_", "n_humidity_slider_", "compare_type_A_",
-        "compare_type_B_", "csv_prop_selector_", "csv_uploader_main_",
-        "mc_n_sim_", "mc_ea_unc_", "mc_k_unc_", "pdf_generate_btn_",
-        "pdf_download_btn_", "abq_inp_btn_", "abq_py_btn_", "abq_inp_dl_",
-        "abq_py_dl_", "compare_btn_key_", "mc_run_btn_",
+        "propellant_selector_", "criterion_type_selector_", "threshold_slider_",
+        "use_real_data_checkbox_", "ea_slider_", "storage_temp_input_",
+        "use_humidity_check_", "rh_storage_slider_", "rh_ref_input_",
+        "n_humidity_slider_", "compare_type_A_", "compare_type_B_",
+        "csv_prop_selector_", "csv_uploader_main_", "mc_n_sim_",
+        "mc_ea_unc_", "mc_k_unc_", "pdf_generate_btn_", "pdf_download_btn_",
+        "abq_inp_btn_", "abq_py_btn_", "abq_inp_dl_", "abq_py_dl_",
+        "compare_btn_key_", "mc_run_btn_",
     ]
     keys_to_delete = [k for k in list(st.session_state.keys())
                       if any(k.startswith(p) for p in widget_prefixes)]
@@ -514,7 +479,7 @@ st.sidebar.markdown(f"""
 """)
 
 # ============================================================
-# تعريف قواميس الخصائص (قبل معيار الفشل للمزامنة)
+# قواميس الخصائص
 # ============================================================
 if st.session_state.language == "en":
     prop_options = prop.get("properties_en", {"young_modulus": "Young Modulus"})
@@ -524,49 +489,63 @@ else:
 prop_options_lookup = {v: k for k, v in prop_options.items()}
 
 # ============================================================
-# معيار الفشل (مع المزامنة التلقائية)
+# معيار الفشل: قائمة النوع + شريط النسبة
 # ============================================================
 st.sidebar.header(t("failure_criterion"))
 
+# قائمة أنواع المعايير المتاحة (حسب اللغة)
 if st.session_state.language == "en":
-    criteria_list = prop.get("failure_criteria_en", prop["failure_criteria"])
+    criterion_types_list = [
+        "Young Modulus increase",
+        "Shore A increase",
+        "Max Thrust increase",
+        "Stabilizer depletion",
+        "Elongation decrease",
+        "Weight loss",
+    ]
 else:
-    criteria_list = prop["failure_criteria"]
+    criterion_types_list = [
+        "زيادة معامل يونج",
+        "زيادة الصلابة Shore A",
+        "زيادة الدفع الأقصى",
+        "استهلاك المُثبِّت",
+        "انخفاض Elongation",
+        "فقدان وزن",
+    ]
 
-criterion = st.sidebar.selectbox(
-    t("select_criterion"),
-    criteria_list,
-    key=f"criterion_selector_{lang_key}",
+criterion_type = st.sidebar.selectbox(
+    t("criterion_type_label"),
+    criterion_types_list,
+    key=f"criterion_type_selector_{lang_key}",
 )
 
-if criterion not in criteria_list:
-    criterion = criteria_list[0]
+# الخاصية الافتراضية من نوع المعيار
+derived_prop_key = CRITERION_TYPE_TO_PROPERTY.get(criterion_type, "young_modulus")
+derived_prop_label = [k for k, v in prop_options_lookup.items() if v == derived_prop_key]
 
-# ====== المزامنة التلقائية ======
-if "prev_criterion" not in st.session_state:
-    st.session_state.prev_criterion = criterion
+if derived_prop_label:
+    prop_key = derived_prop_key
+    prop_label = derived_prop_label[0]
+else:
+    prop_key = list(prop_options_lookup.values())[0]
+    prop_label = list(prop_options_lookup.keys())[0]
 
-if st.session_state.prev_criterion != criterion:
-    st.session_state.prev_criterion = criterion
-    if criterion in CRITERION_MAP:
-        c_prop_key, c_thresh = CRITERION_MAP[criterion]
-        
-        # تحديد اسم العرض للخاصية
-        if st.session_state.language == "en":
-            c_prop_display = prop.get("properties_en", {}).get(c_prop_key)
-        else:
-            c_prop_display = prop.get("properties_ar", {}).get(c_prop_key)
-            
-        if c_prop_display:
-            st.session_state[f"prop_label_selector_{lang_key}"] = c_prop_display
-            
-        st.session_state[f"threshold_slider_{lang_key}"] = float(c_thresh)
-# ================================
+# شريط النسبة (المستخدم يتحكم فيها بالكامل)
+threshold_pct = st.sidebar.slider(
+    t("allowed_change"),
+    min_value=5.0, max_value=50.0, value=20.0, step=1.0,
+    key=f"threshold_slider_{lang_key}",
+)
+
+# توليد نص معيار الفشل تلقائيًا
+criterion_template = CRITERION_TEXT_TEMPLATES[st.session_state.language].get(criterion_type, "{pct:.0f}%")
+criterion = criterion_template.format(pct=threshold_pct)
 
 # ============================================================
-# اختيار الخاصية الحاكمة
+# عرض الخاصية الحاكمة (للعرض فقط)
 # ============================================================
 st.sidebar.header(t("governing_property"))
+st.sidebar.info(f"**{t('governing_property')}:** {prop_label}")
 
 if prop["has_real_data"]:
     use_real_data = st.sidebar.checkbox(
@@ -576,27 +555,6 @@ if prop["has_real_data"]:
     )
 else:
     use_real_data = False
-
-prop_label = st.sidebar.selectbox(
-    t("select_property"),
-    list(prop_options_lookup.keys()),
-    key=f"prop_label_selector_{lang_key}",
-)
-
-if prop_label not in prop_options_lookup:
-    prop_label = list(prop_options_lookup.keys())[0]
-
-prop_key = prop_options_lookup[prop_label]
-
-# ============================================================
-# النسبة المسموحة
-# ============================================================
-threshold_pct = st.sidebar.slider(
-    t("allowed_change"),
-    min_value=5.0, max_value=50.0,
-    step=1.0,
-    key=f"threshold_slider_{lang_key}",
-)
 
 # ============================================================
 # طاقة التنشيط
@@ -1220,4 +1178,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v3.1 | 2026")
+st.caption("Rocket Aging Simulation Platform | v4.0 | 2026")
