@@ -875,7 +875,7 @@ st.caption("بدل رقم واحد، هتطلعلك عيّنة احتمالية 
 
 col_mc1, col_mc2, col_mc3 = st.columns(3)
 with col_mc1:
-    n_sim = st.number_input("عدد المحاكاكات", value=1000, 
+    n_sim = st.number_input("عدد مرات المحاكاة", value=1000, 
                             min_value=100, max_value=10000, step=100,
                             key="mc_n_sim")
 with col_mc2:
