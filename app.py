@@ -445,10 +445,13 @@ lang_choice = st.sidebar.radio(
     "🌐 اللغة / Language",
     ["العربية", "English"],
     horizontal=True,
-    key="lang_selector",
+    key="lang_selector_main",
 )
 st.session_state.language = "ar" if lang_choice == "العربية" else "en"
 st.sidebar.markdown("---")
+
+# مفتاح اللغة للحقول (لتحديثها عند تغيير اللغة)
+lang_key = st.session_state.language
 
 # ============================================================
 # العنوان
@@ -463,7 +466,7 @@ st.sidebar.header(t("propellant_type"))
 propellant_key = st.sidebar.selectbox(
     t("select_propellant"),
     list(PROPELLANT_TYPES.keys()),
-    key="propellant_selector",
+    key=f"propellant_selector_{lang_key}",
 )
 prop = PROPELLANT_TYPES[propellant_key]
 
@@ -495,7 +498,7 @@ if prop["has_real_data"]:
     use_real_data = st.sidebar.checkbox(
         t("use_exp_data"),
         value=True,
-        key="use_real_data_checkbox",
+        key=f"use_real_data_checkbox_{lang_key}",
     )
 else:
     use_real_data = False
@@ -503,7 +506,7 @@ else:
 prop_label = st.sidebar.selectbox(
     t("select_property"),
     list(prop_options.keys()),
-    key="prop_label_selector",
+    key=f"prop_label_selector_{lang_key}",
 )
 prop_key = prop_options_inv[prop_label]
 
@@ -543,7 +546,7 @@ else:
         max_value=float(Ea_max),
         value=float(prop["Ea_default"]),
         step=1.0,
-        key="ea_slider",
+        key=f"ea_slider_{lang_key}",
     )
 
 # ============================================================
@@ -559,13 +562,13 @@ else:
 criterion = st.sidebar.selectbox(
     t("select_criterion"),
     criteria_list,
-    key="criterion_selector",
+    key=f"criterion_selector_{lang_key}",
 )
 
 threshold_pct = st.sidebar.slider(
     t("allowed_change"),
     min_value=5.0, max_value=50.0, value=20.0, step=1.0,
-    key="threshold_slider",
+    key=f"threshold_slider_{lang_key}",
 )
 
 # ============================================================
@@ -575,7 +578,7 @@ st.sidebar.header(t("storage_header"))
 T_storage_C = st.sidebar.number_input(
     t("storage_temp"),
     value=25.0, step=1.0,
-    key="storage_temp_input",
+    key=f"storage_temp_input_{lang_key}",
 )
 
 # ============================================================
@@ -585,24 +588,24 @@ st.sidebar.header(t("humidity_header"))
 use_humidity = st.sidebar.checkbox(
     t("use_humidity"),
     value=False,
-    key="use_humidity_check",
+    key=f"use_humidity_check_{lang_key}",
 )
 
 if use_humidity:
     RH_storage = st.sidebar.slider(
         t("rh_storage"),
         0, 100, 50, 1,
-        key="rh_storage_slider",
+        key=f"rh_storage_slider_{lang_key}",
     )
     RH_ref = st.sidebar.number_input(
         t("rh_ref"),
         value=50, min_value=1, max_value=100,
-        key="rh_ref_input",
+        key=f"rh_ref_input_{lang_key}",
     )
     n_humidity = st.sidebar.slider(
         t("n_humidity"),
         0.5, 3.0, 1.5, 0.1,
-        key="n_humidity_slider",
+        key=f"n_humidity_slider_{lang_key}",
     )
 else:
     RH_storage = 50.0
@@ -869,7 +872,7 @@ def generate_pdf_report():
     return bytes(pdf.output())
 
 
-if st.button(t("pdf_generate"), type="primary", key="pdf_generate_btn"):
+if st.button(t("pdf_generate"), type="primary", key=f"pdf_generate_btn_{lang_key}"):
     try:
         pdf_bytes = generate_pdf_report()
         st.success(t("report_ready"))
@@ -878,7 +881,7 @@ if st.button(t("pdf_generate"), type="primary", key="pdf_generate_btn"):
             data=pdf_bytes,
             file_name=f"aging_report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf",
-            key="pdf_download_btn",
+            key=f"pdf_download_btn_{lang_key}",
         )
     except Exception as e:
         st.error(f"{t('error')}: {str(e)}")
@@ -893,7 +896,7 @@ st.caption(t("csv_caption"))
 uploaded_file = st.file_uploader(
     t("csv_upload"),
     type=["csv"],
-    key="csv_uploader_main",
+    key=f"csv_uploader_main_{lang_key}",
 )
 
 if uploaded_file is not None:
@@ -910,7 +913,7 @@ if uploaded_file is not None:
                 selected_prop = st.selectbox(
                     t("select_property_analysis"),
                     property_cols,
-                    key="csv_prop_selector",
+                    key=f"csv_prop_selector_{lang_key}",
                 )
                 st.subheader(t("csv_analysis"))
                 results = []
@@ -955,11 +958,21 @@ st.caption(t("comparison_caption"))
 
 col_a, col_b = st.columns(2)
 with col_a:
-    type_A = st.selectbox(t("type_a"), list(PROPELLANT_TYPES.keys()), index=0, key="compare_type_A")
+    type_A = st.selectbox(
+        t("type_a"),
+        list(PROPELLANT_TYPES.keys()),
+        index=0,
+        key=f"compare_type_A_{lang_key}",
+    )
 with col_b:
-    type_B = st.selectbox(t("type_b"), list(PROPELLANT_TYPES.keys()), index=2, key="compare_type_B")
+    type_B = st.selectbox(
+        t("type_b"),
+        list(PROPELLANT_TYPES.keys()),
+        index=2,
+        key=f"compare_type_B_{lang_key}",
+    )
 
-if st.button(t("compare_btn"), type="primary", key="compare_btn_key"):
+if st.button(t("compare_btn"), type="primary", key=f"compare_btn_key_{lang_key}"):
     prop_A = PROPELLANT_TYPES[type_A]
     prop_B = PROPELLANT_TYPES[type_B]
 
@@ -1011,13 +1024,22 @@ st.caption(t("mc_caption"))
 
 col_mc1, col_mc2, col_mc3 = st.columns(3)
 with col_mc1:
-    n_sim = st.number_input(t("mc_n_sim"), value=1000, min_value=100, max_value=10000, step=100, key="mc_n_sim")
+    n_sim = st.number_input(
+        t("mc_n_sim"), value=1000, min_value=100, max_value=10000, step=100,
+        key=f"mc_n_sim_{lang_key}",
+    )
 with col_mc2:
-    Ea_uncertainty = st.slider(t("mc_ea_unc"), 0, 30, 10, key="mc_ea_unc")
+    Ea_uncertainty = st.slider(
+        t("mc_ea_unc"), 0, 30, 10,
+        key=f"mc_ea_unc_{lang_key}",
+    )
 with col_mc3:
-    k_uncertainty = st.slider(t("mc_k_unc"), 0, 50, 20, key="mc_k_unc")
+    k_uncertainty = st.slider(
+        t("mc_k_unc"), 0, 50, 20,
+        key=f"mc_k_unc_{lang_key}",
+    )
 
-if st.button(t("mc_run"), type="primary", key="mc_run_btn"):
+if st.button(t("mc_run"), type="primary", key=f"mc_run_btn_{lang_key}"):
     np.random.seed(42)
     Ea_samples = np.random.normal(Ea_kJ, Ea_kJ * Ea_uncertainty / 100, n_sim)
     k_65_samples = np.random.normal(k_obs, k_obs * k_uncertainty / 100, n_sim)
@@ -1062,7 +1084,7 @@ st.caption(t("abaqus_caption"))
 col_abq1, col_abq2 = st.columns(2)
 
 with col_abq1:
-    if st.button(t("abaqus_inp"), type="primary", key="abq_inp_btn"):
+    if st.button(t("abaqus_inp"), type="primary", key=f"abq_inp_btn_{lang_key}"):
         inp_content = f"""*HEADING
 Solid Rocket Motor Propellant - Aging Simulation
 Propellant: {clean_text_for_pdf(propellant_key).split(' - ')[0]}
@@ -1093,11 +1115,11 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
             data=inp_content.encode('utf-8'),
             file_name=f"propellant_aging_{datetime.now().strftime('%Y%m%d_%H%M')}.inp",
             mime="text/plain",
-            key="abq_inp_dl",
+            key=f"abq_inp_dl_{lang_key}",
         )
 
 with col_abq2:
-    if st.button(t("abaqus_py"), type="primary", key="abq_py_btn"):
+    if st.button(t("abaqus_py"), type="primary", key=f"abq_py_btn_{lang_key}"):
         py_content = f'''# Abaqus Python Script - Aging Simulation
 from abaqus import *
 from abaqusConstants import *
@@ -1119,7 +1141,7 @@ print("Material created successfully.")
             data=py_content.encode('utf-8'),
             file_name=f"abaqus_script_{datetime.now().strftime('%Y%m%d_%H%M')}.py",
             mime="text/x-python",
-            key="abq_py_dl",
+            key=f"abq_py_dl_{lang_key}",
         )
 
 with st.expander(t("abaqus_guide")):
@@ -1142,4 +1164,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v2.0 | 2026")
+st.caption("Rocket Aging Simulation Platform | v2.1 | 2026")
