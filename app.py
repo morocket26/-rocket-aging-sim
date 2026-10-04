@@ -86,6 +86,16 @@ TRANSLATIONS = {
         "abaqus_csv": "📥 تحميل بيانات الإجهاد-الانفعال (CSV)",
         "abaqus_guide": "📖 دليل استخدام ملفات Abaqus",
         "language": "🌐 اللغة / Language",
+        "name": "الاسم",
+        "aging_mech_label": "آلية التقادم",
+        "stabilizers_label": "المُثبِّتات",
+        "reference_label": "المرجع",
+        "propellant_label": "الوقود",
+        "validation_header": "🔬 التحقق: النموذج مقابل البيانات التجريبية",
+        "model_label": "النموذج",
+        "exp_data_label": "بيانات تجريبية",
+        "report_ready": "✅ التقرير جاهز للتحميل!",
+        "error": "خطأ",
     },
     "en": {
         "title": "🚀 Aging Simulation Platform",
@@ -159,6 +169,16 @@ TRANSLATIONS = {
         "abaqus_csv": "📥 Download Stress-Strain Data (CSV)",
         "abaqus_guide": "📖 Abaqus Usage Guide",
         "language": "🌐 اللغة / Language",
+        "name": "Name",
+        "aging_mech_label": "Aging Mechanism",
+        "stabilizers_label": "Stabilizers",
+        "reference_label": "Reference",
+        "propellant_label": "Propellant",
+        "validation_header": "🔬 Validation: Model vs Experimental Data",
+        "model_label": "Model",
+        "exp_data_label": "Experimental data",
+        "report_ready": "✅ Report ready!",
+        "error": "Error",
     },
 }
 
@@ -170,7 +190,7 @@ def t(key):
 
 
 # ============================================================
-# دالة التحقق من البيانات التجريبية
+# دوال مساعدة
 # ============================================================
 def has_valid_experimental_data(prop):
     data = prop.get("experimental_data")
@@ -188,6 +208,24 @@ def clean_text_for_pdf(text):
     return ' '.join(cleaned.split()).strip()
 
 
+def get_propellant_display_info(prop, key):
+    """إرجاع معلومات النوع حسب اللغة"""
+    if st.session_state.language == "en":
+        return {
+            "name": key.split(' - ')[0],
+            "aging": prop.get('aging_mechanism_en', 'N/A'),
+            "stabilizers": prop.get('stabilizers_en', 'N/A'),
+            "reference": prop.get('reference_en', prop.get('reference', 'N/A')),
+        }
+    else:
+        return {
+            "name": prop.get('name_ar', key.split(' - ')[0]),
+            "aging": prop.get('aging_mechanism', 'N/A'),
+            "stabilizers": prop.get('stabilizers', 'N/A'),
+            "reference": prop.get('reference', 'N/A'),
+        }
+
+
 # ============================================================
 # قاعدة بيانات أنواع الوقود
 # ============================================================
@@ -203,6 +241,11 @@ PROPELLANT_TYPES = {
             "زيادة الدفع الأقصى 15%",
             "زيادة الصلابة Shore A 10%",
         ],
+        "failure_criteria_en": [
+            "Young Modulus increase by 20%",
+            "Max Thrust increase by 15%",
+            "Shore A increase by 10%",
+        ],
         "reference": "Asthana et al., Solid Propellant Chemistry",
         "aging_mechanism_en": "Stabilizer depletion (2-NDPA, Carbamite) + AP/NG interaction",
         "stabilizers_en": "2-NDPA, Carbamite (EC), MNA",
@@ -211,6 +254,11 @@ PROPELLANT_TYPES = {
             "young_modulus": "Young Modulus",
             "shore_A": "Shore A Hardness",
             "max_thrust": "Max Thrust",
+        },
+        "properties_ar": {
+            "young_modulus": "معامل يونج",
+            "shore_A": "الصلابة Shore A",
+            "max_thrust": "الدفع الأقصى",
         },
         "k_exp_65C": 0.0048,
         "has_real_data": True,
@@ -249,6 +297,11 @@ PROPELLANT_TYPES = {
             "زيادة معامل يونج 20%",
             "زيادة الصلابة Shore A 10%",
         ],
+        "failure_criteria_en": [
+            "Stabilizer depletion by 50%",
+            "Young Modulus increase by 20%",
+            "Shore A increase by 10%",
+        ],
         "reference": "NATO STO-MP-AVT-268 (2017)",
         "aging_mechanism_en": "Nitrate ester decomposition → Stabilizer depletion",
         "stabilizers_en": "2-NDPA, Ethyl Centralite, Akardite II",
@@ -256,6 +309,10 @@ PROPELLANT_TYPES = {
         "properties_en": {
             "young_modulus": "Young Modulus",
             "shore_A": "Shore A Hardness",
+        },
+        "properties_ar": {
+            "young_modulus": "معامل يونج",
+            "shore_A": "الصلابة Shore A",
         },
         "k_exp_65C": 0.0048,
         "has_real_data": False,
@@ -272,6 +329,11 @@ PROPELLANT_TYPES = {
             "زيادة الصلابة Shore A 15%",
             "زيادة معامل يونج 25%",
         ],
+        "failure_criteria_en": [
+            "Elongation decrease by 30%",
+            "Shore A increase by 15%",
+            "Young Modulus increase by 25%",
+        ],
         "reference": "Shekhar, Prediction of Shelf Life (2014)",
         "aging_mechanism_en": "Binder oxidation + crosslinking",
         "stabilizers_en": "Antioxidants",
@@ -279,6 +341,10 @@ PROPELLANT_TYPES = {
         "properties_en": {
             "young_modulus": "Young Modulus",
             "shore_A": "Shore A Hardness",
+        },
+        "properties_ar": {
+            "young_modulus": "معامل يونج",
+            "shore_A": "الصلابة Shore A",
         },
         "k_exp_65C": 0.0035,
         "has_real_data": False,
@@ -295,6 +361,11 @@ PROPELLANT_TYPES = {
             "تغير معامل يونج 15%",
             "فقدان وزن 2%",
         ],
+        "failure_criteria_en": [
+            "Stabilizer depletion by 40%",
+            "Young Modulus change by 15%",
+            "Weight loss 2%",
+        ],
         "reference": "NATO STO-TR-AVT-171",
         "aging_mechanism_en": "Nitrate ester decomposition + plasticizer migration",
         "stabilizers_en": "Special stabilizers",
@@ -302,6 +373,10 @@ PROPELLANT_TYPES = {
         "properties_en": {
             "young_modulus": "Young Modulus",
             "shore_A": "Shore A Hardness",
+        },
+        "properties_ar": {
+            "young_modulus": "معامل يونج",
+            "shore_A": "الصلابة Shore A",
         },
         "k_exp_65C": 0.0080,
         "has_real_data": False,
@@ -317,6 +392,10 @@ PROPELLANT_TYPES = {
             "انخفاض Elongation 25%",
             "زيادة معامل يونج 20%",
         ],
+        "failure_criteria_en": [
+            "Elongation decrease by 25%",
+            "Young Modulus increase by 20%",
+        ],
         "reference": "Insensitive Munitions Program Reports",
         "aging_mechanism_en": "Polymer oxidation",
         "stabilizers_en": "Antioxidants",
@@ -324,6 +403,10 @@ PROPELLANT_TYPES = {
         "properties_en": {
             "young_modulus": "Young Modulus",
             "shore_A": "Shore A Hardness",
+        },
+        "properties_ar": {
+            "young_modulus": "معامل يونج",
+            "shore_A": "الصلابة Shore A",
         },
         "k_exp_65C": 0.0040,
         "has_real_data": False,
@@ -336,7 +419,6 @@ PROPELLANT_TYPES = {
 # ============================================================
 st.set_page_config(page_title="Aging Simulation", page_icon="🚀", layout="wide")
 
-# CSS
 st.markdown("""
 <style>
     .main { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
@@ -357,10 +439,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# اختيار اللغة
+# اختيار اللغة (أول حاجة في الشريط الجانبي)
 # ============================================================
 lang_choice = st.sidebar.radio(
-    t("language"),
+    "🌐 اللغة / Language",
     ["العربية", "English"],
     horizontal=True,
     key="lang_selector",
@@ -385,13 +467,14 @@ propellant_key = st.sidebar.selectbox(
 )
 prop = PROPELLANT_TYPES[propellant_key]
 
-# عرض معلومات النوع
+# معلومات النوع (حسب اللغة)
+prop_info = get_propellant_display_info(prop, propellant_key)
 st.sidebar.markdown(f"""
 **{t("prop_info")}:**
-- **{t("governing_property")}:** {prop['name_ar']}
-- **{t("aging_mechanism")}:** {prop['aging_mechanism']}
-- **{t("stabilizers")}:** {prop['stabilizers']}
-- **{t("reference")}:** {prop['reference']}
+- **{t("name")}:** {prop_info['name']}
+- **{t("aging_mech_label")}:** {prop_info['aging']}
+- **{t("stabilizers_label")}:** {prop_info['stabilizers']}
+- **{t("reference_label")}:** {prop_info['reference']}
 """)
 
 # ============================================================
@@ -399,22 +482,22 @@ st.sidebar.markdown(f"""
 # ============================================================
 st.sidebar.header(t("governing_property"))
 
+# قاموس الخصائص حسب اللغة
+if st.session_state.language == "en":
+    prop_options = prop.get("properties_en", {"young_modulus": "Young Modulus"})
+else:
+    prop_options = prop.get("properties_ar", {"young_modulus": "معامل يونج"})
+
+# عكس القاموس (القيمة -> المفتاح)
+prop_options_inv = {v: k for k, v in prop_options.items()}
+
 if prop["has_real_data"]:
-    prop_options = {
-        t("governing_property"): "young_modulus",
-        "Shore A": "shore_A",
-        "Max Thrust": "max_thrust",
-    }
     use_real_data = st.sidebar.checkbox(
         t("use_exp_data"),
         value=True,
         key="use_real_data_checkbox",
     )
 else:
-    prop_options = {
-        t("governing_property"): "young_modulus",
-        "Shore A": "shore_A",
-    }
     use_real_data = False
 
 prop_label = st.sidebar.selectbox(
@@ -422,7 +505,7 @@ prop_label = st.sidebar.selectbox(
     list(prop_options.keys()),
     key="prop_label_selector",
 )
-prop_key = prop_options[prop_label]
+prop_key = prop_options_inv[prop_label]
 
 # ============================================================
 # طاقة التنشيط
@@ -439,15 +522,23 @@ if prop["has_real_data"]:
     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
     k_obs_calc = float(np.mean(k_vals))
     Ea_kJ = float(prop["Ea_default"])
-    st.sidebar.info(
-        f"**k (from data):** {k_obs_calc:.6f} /day\n\n"
-        f"**Ea (from literature):** {Ea_kJ:.0f} kJ/mol"
-    )
-    st.sidebar.metric("Ea Used", f"{Ea_kJ:.0f} kJ/mol")
+
+    if st.session_state.language == "en":
+        st.sidebar.info(
+            f"**k (from data):** {k_obs_calc:.6f} /day\n\n"
+            f"**Ea (from literature):** {Ea_kJ:.0f} kJ/mol"
+        )
+        st.sidebar.metric("Ea Used", f"{Ea_kJ:.0f} kJ/mol")
+    else:
+        st.sidebar.info(
+            f"**k من بياناتك:** {k_obs_calc:.6f} /day\n\n"
+            f"**Ea من الأدبيات:** {Ea_kJ:.0f} kJ/mol"
+        )
+        st.sidebar.metric("Ea المستخدمة", f"{Ea_kJ:.0f} kJ/mol")
 else:
     Ea_min, Ea_max = prop["Ea_range"]
     Ea_kJ = st.sidebar.slider(
-        t("ea_header"),
+        "Ea (kJ/mol)",
         min_value=float(Ea_min),
         max_value=float(Ea_max),
         value=float(prop["Ea_default"]),
@@ -459,9 +550,15 @@ else:
 # معيار الفشل
 # ============================================================
 st.sidebar.header(t("failure_criterion"))
+
+if st.session_state.language == "en":
+    criteria_list = prop.get("failure_criteria_en", prop["failure_criteria"])
+else:
+    criteria_list = prop["failure_criteria"]
+
 criterion = st.sidebar.selectbox(
     t("select_criterion"),
-    prop["failure_criteria"],
+    criteria_list,
     key="criterion_selector",
 )
 
@@ -523,19 +620,19 @@ T_exp_K = T_exp_C + 273.15
 Ea = Ea_kJ * 1000
 T_storage_K = T_storage_C + 273.15
 
-if prop["has_real_data"]:
+if prop["has_real_data"] and use_real_data:
     d = prop["experimental_data"][prop_key]
-    t_data = np.array(d["t"], dtype=float)
-    y_data = np.array(d["y"], dtype=float)
+    t_data_arr = np.array(d["t"], dtype=float)
+    y_data_arr = np.array(d["y"], dtype=float)
     y0_data = d["y0"]
     with np.errstate(divide='ignore', invalid='ignore'):
-        k_vals = (y_data / y0_data - 1) / t_data
+        k_vals = (y_data_arr / y0_data - 1) / t_data_arr
     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
     k_obs = float(np.mean(k_vals))
-    data_source = "Experimental data (65 C)"
+    data_source = "Experimental data (65°C)"
 else:
     k_obs = prop["k_exp_65C"]
-    data_source = f"Literature values ({prop['reference']})"
+    data_source = f"Literature ({prop.get('reference_en', prop['reference'])})"
 
 A_arr = k_obs / np.exp(-Ea / (R * T_exp_K))
 
@@ -558,11 +655,16 @@ AF = (k_storage * RH_factor_storage) / (k_ref * RH_factor_ref)
 # ============================================================
 # عرض معلومات المعايرة
 # ============================================================
+if st.session_state.language == "en":
+    prop_display_name = prop.get("properties_en", {}).get(prop_key, "Property")
+else:
+    prop_display_name = prop.get("properties_ar", {}).get(prop_key, prop_label)
+
 st.markdown(f"""
 <div class="info-box">
 <b>{t("prop_info")}:</b><br>
-• <b>{t("propellant_type")}:</b> {propellant_key.split(' - ')[0]}<br>
-• <b>{t("governing_property")}:</b> {prop_label}<br>
+• <b>{t("propellant_label")}:</b> {propellant_key.split(' - ')[0]}<br>
+• <b>{t("governing_property")}:</b> {prop_display_name}<br>
 • <b>{t("csv_data")}:</b> {data_source}<br>
 • <b>k at 65°C:</b> {k_obs:.6f} /day<br>
 • <b>Arrhenius A:</b> {A_arr:.4e} /day
@@ -604,22 +706,22 @@ st.markdown(f"""
 # رسم التحقق
 # ============================================================
 if prop["has_real_data"] and use_real_data:
-    st.header("🔬 Validation: Model vs Experimental Data")
+    st.header(t("validation_header"))
     d = prop["experimental_data"][prop_key]
-    t_data = np.array(d["t"], dtype=float)
-    y_data = np.array(d["y"], dtype=float)
-    y0 = d["y0"]
+    t_data_plot = np.array(d["t"], dtype=float)
+    y_data_plot = np.array(d["y"], dtype=float)
+    y0_plot = d["y0"]
 
     fig, ax = plt.subplots(figsize=(11, 4.5))
     fig.patch.set_facecolor('#f5f7fa')
     ax.set_facecolor('#ffffff')
-    ax.scatter(t_data, y_data, s=120, c='red', zorder=5, label='Experimental')
-    t_smooth = np.linspace(0, max(t_data) * 1.2, 100)
-    y_smooth = y0 * (1 + k_obs * t_smooth)
-    ax.plot(t_smooth, y_smooth, 'b-', linewidth=2.5, label='Model')
+    ax.scatter(t_data_plot, y_data_plot, s=120, c='red', zorder=5, label=t("exp_data_label"))
+    t_smooth = np.linspace(0, max(t_data_plot) * 1.2, 100)
+    y_smooth = y0_plot * (1 + k_obs * t_smooth)
+    ax.plot(t_smooth, y_smooth, 'b-', linewidth=2.5, label=t("model_label"))
     ax.set_xlabel('Time (days)')
-    ax.set_ylabel('Property')
-    ax.set_title('Model vs Experimental Data')
+    ax.set_ylabel(prop_display_name)
+    ax.set_title(t("validation_header"))
     ax.legend()
     ax.grid(True, alpha=0.3)
     st.pyplot(fig)
@@ -647,6 +749,8 @@ st.dataframe(pd.DataFrame(data_table), use_container_width=True)
 # ============================================================
 st.markdown("---")
 st.header(t("pdf_header"))
+st.caption(t("pdf_caption"))
+
 
 def generate_pdf_report():
     pdf = FPDF()
@@ -764,10 +868,11 @@ def generate_pdf_report():
 
     return bytes(pdf.output())
 
+
 if st.button(t("pdf_generate"), type="primary", key="pdf_generate_btn"):
     try:
         pdf_bytes = generate_pdf_report()
-        st.success("Report ready!")
+        st.success(t("report_ready"))
         st.download_button(
             label=t("pdf_download"),
             data=pdf_bytes,
@@ -776,7 +881,7 @@ if st.button(t("pdf_generate"), type="primary", key="pdf_generate_btn"):
             key="pdf_download_btn",
         )
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"{t('error')}: {str(e)}")
 
 # ============================================================
 # رفع CSV
@@ -839,7 +944,7 @@ if uploaded_file is not None:
                 else:
                     st.warning("Need at least 3 temperatures for Ea calculation.")
     except Exception as e:
-        st.error(f"Error reading file: {str(e)}")
+        st.error(f"{t('error')}: {str(e)}")
 
 # ============================================================
 # مقارنة نوعين
