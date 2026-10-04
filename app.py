@@ -776,3 +776,93 @@ if st.button("📥 إنشاء التقرير PDF", type="primary"):
         )
     except Exception as e:
         st.error(f"❌ خطأ في إنشاء التقرير: {str(e)}")
+# ============================================================
+# المقارنة التفصيلية بين نوعين من الوقود
+# ============================================================
+st.markdown("---")
+st.header("⚔️ مقارنة تفصيلية بين نوعين من الوقود")
+st.caption("قارن بين نوعين: k، Ea، والعمر الافتراضي عند درجات حرارة مختلفة")
+
+col_a, col_b = st.columns(2)
+
+with col_a:
+    type_A = st.selectbox(
+        "النوع الأول (A)",
+        list(PROPELLANT_TYPES.keys()),
+        index=0,
+        key="compare_type_A",
+    )
+
+with col_b:
+    type_B = st.selectbox(
+        "النوع الثاني (B)",
+        list(PROPELLANT_TYPES.keys()),
+        index=2,
+        key="compare_type_B",
+    )
+
+if st.button("🔍 قارن الآن", type="primary", key="compare_btn"):
+    prop_A = PROPELLANT_TYPES[type_A]
+    prop_B = PROPELLANT_TYPES[type_B]
+
+    # حساب العمر لكل نوع
+    results = []
+    for name, p in [(type_A, prop_A), (type_B, prop_B)]:
+        k_65 = p["k_exp_65C"]
+        A_i = k_65 / np.exp(-Ea / (R * T_exp_K))
+        k_25 = A_i * np.exp(-Ea / (R * T_ref_K))
+        k_stor = A_i * np.exp(-Ea / (R * T_storage_K))
+
+        life_25 = (threshold_pct / 100) / k_25 / 365
+        life_stor = (threshold_pct / 100) / k_stor / 365
+
+        results.append({
+            "النوع": name.split(" - ")[0],
+            "k عند 65°C": f"{k_65:.4e}",
+            "Ea (kJ/mol)": f"{p['Ea_default']:.0f}",
+            "العمر عند 25°C": f"{life_25:.2f}",
+            f"العمر عند {T_storage_C:.0f}°C": f"{life_stor:.2f}",
+        })
+
+    # عرض الجدول
+    df_compare = pd.DataFrame(results).T
+    df_compare.columns = ["النوع A", "النوع B"]
+    st.dataframe(df_compare, use_container_width=True)
+
+    # رسم مقارن
+    st.subheader("📈 منحنى العمر الافتراضي مقابل درجة الحرارة")
+    fig_cmp, ax_cmp = plt.subplots(figsize=(11, 5))
+    fig_cmp.patch.set_facecolor('#f5f7fa')
+    ax_cmp.set_facecolor('#ffffff')
+
+    temps_plot = np.linspace(15, 70, 50)
+    colors = ['steelblue', 'crimson']
+
+    for i, (name, p) in enumerate([(type_A, prop_A), (type_B, prop_B)]):
+        k_65 = p["k_exp_65C"]
+        A_i = k_65 / np.exp(-Ea / (R * T_exp_K))
+        k_arr = A_i * np.exp(-Ea / (R * (temps_plot + 273.15)))
+        life_arr = (threshold_pct / 100) / k_arr / 365
+        ax_cmp.plot(temps_plot, life_arr, linewidth=2.5,
+                    color=colors[i], label=name.split(" - ")[0])
+
+    ax_cmp.set_xlabel("درجة الحرارة (°C)", fontsize=12)
+    ax_cmp.set_ylabel("العمر الافتراضي (سنة)", fontsize=12)
+    ax_cmp.set_title("مقارنة العمر بين النوعين", fontsize=13, fontweight='bold')
+    ax_cmp.set_yscale('log')
+    ax_cmp.legend(fontsize=11)
+    ax_cmp.grid(True, alpha=0.3, which='both')
+    st.pyplot(fig_cmp)
+
+    # حساب فرق النسبة
+    k_65_A = prop_A["k_exp_65C"]
+    k_65_B = prop_B["k_exp_65C"]
+    ratio = k_65_A / k_65_B
+
+    st.info(
+        f"**الفرق بين النوعين:**\n\n"
+        f"- النوع **A** ({type_A.split(' - ')[0]}) له k = {k_65_A:.4e} /day\n"
+        f"- النوع **B** ({type_B.split(' - ')[0]}) له k = {k_65_B:.4e} /day\n"
+        f"- **النسبة**: {ratio:.2f}x  →  "
+        f"النوع {'A' if ratio > 1 else 'B'} يتقادم أسرع بـ {abs(ratio - 1)*100:.1f}%"
+    )
