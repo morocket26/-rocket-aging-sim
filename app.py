@@ -211,15 +211,36 @@ prop_key = prop_options[prop_label]
 # إعدادات Ea و k
 # ============================================================
 st.sidebar.header("🌡️ طاقة التنشيط Ea")
-Ea_min, Ea_max = prop["Ea_range"]
-Ea_kJ = st.sidebar.slider(
-    "Ea (kJ/mol)",
-    min_value=float(Ea_min),
-    max_value=float(Ea_max),
-    value=float(prop["Ea_default"]),
-    step=1.0,
-    help=f"النطاق الموصى به: {Ea_min}-{Ea_max} kJ/mol",
-)
+
+if prop["has_real_data"]:
+    # استخلاص k من البيانات الفعلية
+    d = prop["experimental_data"][prop_key]
+    t_data = np.array(d["t"], dtype=float)
+    y_data = np.array(d["y"], dtype=float)
+    y0_data = d["y0"]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        k_vals = (y_data / y0_data - 1) / t_data
+    k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
+    k_obs_calc = float(np.mean(k_vals))
+
+    # Ea من الأدبيات (لأن عندنا نقطة واحدة بس)
+    Ea_kJ = float(prop["Ea_default"])
+
+    st.sidebar.info(
+        f"**k من بياناتك:** {k_obs_calc:.6f} /day\n\n"
+        f"**Ea (من الأدبيات):** {Ea_kJ:.0f} kJ/mol"
+    )
+    st.sidebar.metric("Ea المستخدمة", f"{Ea_kJ:.0f} kJ/mol")
+else:
+    Ea_min, Ea_max = prop["Ea_range"]
+    Ea_kJ = st.sidebar.slider(
+        "Ea (kJ/mol)",
+        min_value=float(Ea_min),
+        max_value=float(Ea_max),
+        value=float(prop["Ea_default"]),
+        step=1.0,
+        help=f"النطاق الموصى به: {Ea_min}-{Ea_max} kJ/mol",
+        
 
 # ============================================================
 # معيار الفشل
