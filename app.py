@@ -866,3 +866,81 @@ if st.button("🔍 قارن الآن", type="primary", key="compare_btn"):
         f"- **النسبة**: {ratio:.2f}x  →  "
         f"النوع {'A' if ratio > 1 else 'B'} يتقادم أسرع بـ {abs(ratio - 1)*100:.1f}%"
     )
+# ============================================================
+# محاكاة Monte Carlo - توزيع احتمالي للعمر
+# ============================================================
+st.markdown("---")
+st.header("🎲 محاكاة Monte Carlo - التوزيع الاحتمالي")
+st.caption("بدل رقم واحد، هتطلعلك عيّنة احتمالية للعمر بناءً على عدم اليقين في Ea و k")
+
+col_mc1, col_mc2, col_mc3 = st.columns(3)
+with col_mc1:
+    n_sim = st.number_input("عدد المحاكاكات", value=1000, 
+                            min_value=100, max_value=10000, step=100,
+                            key="mc_n_sim")
+with col_mc2:
+    Ea_uncertainty = st.slider("عدم اليقين في Ea (%)", 0, 30, 10,
+                               key="mc_ea_unc")
+with col_mc3:
+    k_uncertainty = st.slider("عدم اليقين في k (%)", 0, 50, 20,
+                              key="mc_k_unc")
+
+if st.button("🎲 تشغيل Monte Carlo", type="primary", key="mc_run_btn"):
+    np.random.seed(42)
+
+    # توزيعات
+    Ea_samples = np.random.normal(Ea_kJ, Ea_kJ * Ea_uncertainty / 100, n_sim)
+    k_65_samples = np.random.normal(k_obs, k_obs * k_uncertainty / 100, n_sim)
+
+    # ضمان قيم موجبة
+    Ea_samples = np.abs(Ea_samples)
+    k_65_samples = np.abs(k_65_samples)
+
+    # حساب العمر لكل محاكاة
+    life_samples = []
+    for Ea_i, k_65_i in zip(Ea_samples, k_65_samples):
+        A_i = k_65_i / np.exp(-Ea_i * 1000 / (R * T_exp_K))
+        k_stor_i = A_i * np.exp(-Ea_i * 1000 / (R * T_storage_K))
+        life_i = (threshold_pct / 100) / k_stor_i / 365
+        life_samples.append(life_i)
+
+    life_samples = np.array(life_samples)
+
+    # إحصائيات
+    st.subheader("📊 نتائج Monte Carlo")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("المتوسط", f"{np.mean(life_samples):.2f} سنة")
+    c2.metric("الوسيط", f"{np.median(life_samples):.2f} سنة")
+    c3.metric("P5 (تحفظي)", f"{np.percentile(life_samples, 5):.2f} سنة")
+    c4.metric("P95 (متفائل)", f"{np.percentile(life_samples, 95):.2f} سنة")
+
+    # Histogram
+    fig_mc, ax_mc = plt.subplots(figsize=(11, 5))
+    fig_mc.patch.set_facecolor('#f5f7fa')
+    ax_mc.set_facecolor('#ffffff')
+
+    ax_mc.hist(life_samples, bins=50, color='steelblue',
+               edgecolor='white', alpha=0.8)
+    ax_mc.axvline(np.mean(life_samples), color='red',
+                  linestyle='--', linewidth=2, label='المتوسط')
+    ax_mc.axvline(np.percentile(life_samples, 5), color='orange',
+                  linestyle=':', linewidth=2, label='P5 (تحفظي)')
+    ax_mc.axvline(np.percentile(life_samples, 95), color='green',
+                  linestyle=':', linewidth=2, label='P95 (متفائل)')
+
+    ax_mc.set_xlabel('العمر (سنة)', fontsize=12)
+    ax_mc.set_ylabel('التكرار', fontsize=12)
+    ax_mc.set_title(f'توزيع العمر الاحتمالي ({n_sim} محاكاة)',
+                    fontsize=13, fontweight='bold')
+    ax_mc.legend()
+    ax_mc.grid(True, alpha=0.3)
+    st.pyplot(fig_mc)
+
+    # تفسير
+    st.info(
+        f"**التفسير:** بناءً على {n_sim} محاكاة، "
+        f"العمر المتوقع بين **{np.percentile(life_samples, 5):.2f}** "
+        f"و **{np.percentile(life_samples, 95):.2f} سنة** بثقة 90%. "
+        f"القيمة الأكثر ترجيحًا (الوسيط) = **{np.median(life_samples):.2f} سنة**."
+    )
