@@ -420,7 +420,8 @@ else:
 # ============================================================
 # معيار الفشل
 # ============================================================
-st.sidebar.header(t("failure_criterion"))criterion = st.sidebar.selectbox(
+st.sidebar.header(t("failure_criterion"))
+criterion = st.sidebar.selectbox(
     "اختر المعيار",
     prop["failure_criteria"],
 )
