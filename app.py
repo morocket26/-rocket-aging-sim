@@ -434,7 +434,7 @@ threshold_pct = st.sidebar.slider(
 # ============================================================
 # ظروف التخزين
 # ============================================================
-st.sidebar.header(t("storage_header))
+st.sidebar.header(t("storage_header"))
 T_storage_C = st.sidebar.number_input(
     "درجة حرارة التخزين (°C)",
     value=25.0, step=1.0,
@@ -443,7 +443,8 @@ T_storage_C = st.sidebar.number_input(
 # ============================================================
 # ظروف الرطوبة (Peck Model)
 # ============================================================
-st.sidebar.header(t("humidity_header"))use_humidity = st.sidebar.checkbox(
+st.sidebar.header(t("humidity_header"))
+use_humidity = st.sidebar.checkbox(
     "تفعيل تأثير الرطوبة (Peck Model)",
     value=False,
     help="يستخدم نموذج Peck لدمج تأثير الرطوبة مع الحرارة",
