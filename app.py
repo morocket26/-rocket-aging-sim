@@ -1,5 +1,17 @@
+# -*- coding: utf-8 -*-
+"""
+منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
+تدعم 5 أنواع وقود + تقادم معجل + رطوبة + Abaqus + لغتين
+"""
+import streamlit as st
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from fpdf import FPDF
+from datetime import datetime
+
 # ============================================================
-# قاموس الترجمات (Translations Dictionary)
+# قاموس الترجمات
 # ============================================================
 TRANSLATIONS = {
     "ar": {
@@ -152,25 +164,15 @@ TRANSLATIONS = {
 
 
 def t(key):
-    """دالة الترجمة - ترجع النص حسب اللغة المختارة"""
     if "language" not in st.session_state:
         st.session_state.language = "ar"
     return TRANSLATIONS[st.session_state.language].get(key, key)
-# -*- coding: utf-8 -*-
-"""
-منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
-تدعم 5 أنواع من الوقود الصلب (DB, CMDB, Composite, NEPE, HTPE)
-"""
 
-import streamlit as st
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from fpdf import FPDF
-from datetime import datetime
 
+# ============================================================
+# دالة التحقق من البيانات التجريبية
+# ============================================================
 def has_valid_experimental_data(prop):
-    """التحقق التلقائي إن النوع ده فيه بيانات تجريبية صالحة"""
     data = prop.get("experimental_data")
     if not data:
         return False
@@ -178,14 +180,13 @@ def has_valid_experimental_data(prop):
         if isinstance(d, dict) and d.get("y") and len(d["y"]) >= 2:
             return True
     return False
-st.set_page_config(
-    page_title="منصة التقادم - وقود صلب",
-    page_icon="🚀",
-    layout="wide"
-)
 
-R = 8.314
-T_ref_K = 298.15  # 25°C
+
+def clean_text_for_pdf(text):
+    import re
+    cleaned = re.sub(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+', '', text)
+    return ' '.join(cleaned.split()).strip()
+
 
 # ============================================================
 # قاعدة بيانات أنواع الوقود
@@ -249,6 +250,13 @@ PROPELLANT_TYPES = {
             "زيادة الصلابة Shore A 10%",
         ],
         "reference": "NATO STO-MP-AVT-268 (2017)",
+        "aging_mechanism_en": "Nitrate ester decomposition → Stabilizer depletion",
+        "stabilizers_en": "2-NDPA, Ethyl Centralite, Akardite II",
+        "reference_en": "NATO STO-MP-AVT-268 (2017)",
+        "properties_en": {
+            "young_modulus": "Young Modulus",
+            "shore_A": "Shore A Hardness",
+        },
         "k_exp_65C": 0.0048,
         "has_real_data": False,
         "experimental_data": None,
@@ -265,6 +273,13 @@ PROPELLANT_TYPES = {
             "زيادة معامل يونج 25%",
         ],
         "reference": "Shekhar, Prediction of Shelf Life (2014)",
+        "aging_mechanism_en": "Binder oxidation + crosslinking",
+        "stabilizers_en": "Antioxidants",
+        "reference_en": "Shekhar, Prediction of Shelf Life (2014)",
+        "properties_en": {
+            "young_modulus": "Young Modulus",
+            "shore_A": "Shore A Hardness",
+        },
         "k_exp_65C": 0.0035,
         "has_real_data": False,
         "experimental_data": None,
@@ -281,6 +296,13 @@ PROPELLANT_TYPES = {
             "فقدان وزن 2%",
         ],
         "reference": "NATO STO-TR-AVT-171",
+        "aging_mechanism_en": "Nitrate ester decomposition + plasticizer migration",
+        "stabilizers_en": "Special stabilizers",
+        "reference_en": "NATO STO-TR-AVT-171",
+        "properties_en": {
+            "young_modulus": "Young Modulus",
+            "shore_A": "Shore A Hardness",
+        },
         "k_exp_65C": 0.0080,
         "has_real_data": False,
         "experimental_data": None,
@@ -296,6 +318,13 @@ PROPELLANT_TYPES = {
             "زيادة معامل يونج 20%",
         ],
         "reference": "Insensitive Munitions Program Reports",
+        "aging_mechanism_en": "Polymer oxidation",
+        "stabilizers_en": "Antioxidants",
+        "reference_en": "Insensitive Munitions Program Reports",
+        "properties_en": {
+            "young_modulus": "Young Modulus",
+            "shore_A": "Shore A Hardness",
+        },
         "k_exp_65C": 0.0040,
         "has_real_data": False,
         "experimental_data": None,
@@ -303,8 +332,11 @@ PROPELLANT_TYPES = {
 }
 
 # ============================================================
-# CSS مخصص
+# إعدادات الصفحة
 # ============================================================
+st.set_page_config(page_title="Aging Simulation", page_icon="🚀", layout="wide")
+
+# CSS
 st.markdown("""
 <style>
     .main { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
@@ -324,71 +356,80 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title(t("title"))
-st.caption(t("caption"))
-st.caption("وقود صاروخي صلب | 5 أنواع مدعومة | معايرة ببيانات تجريبية")
-
-# ============================================================
-# الشريط الجانبي: اختيار نوع الوقود
 # ============================================================
 # اختيار اللغة
+# ============================================================
 lang_choice = st.sidebar.radio(
-    "🌐 اللغة / Language",
+    t("language"),
     ["العربية", "English"],
     horizontal=True,
     key="lang_selector",
 )
 st.session_state.language = "ar" if lang_choice == "العربية" else "en"
 st.sidebar.markdown("---")
+
+# ============================================================
+# العنوان
+# ============================================================
+st.title(t("title"))
+st.caption(t("caption"))
+
+# ============================================================
+# الشريط الجانبي: اختيار نوع الوقود
+# ============================================================
 st.sidebar.header(t("propellant_type"))
 propellant_key = st.sidebar.selectbox(
     t("select_propellant"),
     list(PROPELLANT_TYPES.keys()),
+    key="propellant_selector",
 )
-
 prop = PROPELLANT_TYPES[propellant_key]
 
 # عرض معلومات النوع
 st.sidebar.markdown(f"""
-**📌 معلومات النوع:**
-- **الاسم بالعربي:** {prop['name_ar']}
-- **آلية التقادم:** {prop['aging_mechanism']}
-- **المُثبِّت:** {prop['stabilizers']}
-- **المرجع:** {prop['reference']}
+**{t("prop_info")}:**
+- **{t("governing_property")}:** {prop['name_ar']}
+- **{t("aging_mechanism")}:** {prop['aging_mechanism']}
+- **{t("stabilizers")}:** {prop['stabilizers']}
+- **{t("reference")}:** {prop['reference']}
 """)
 
 # ============================================================
 # اختيار الخاصية الحاكمة
 # ============================================================
 st.sidebar.header(t("governing_property"))
+
 if prop["has_real_data"]:
     prop_options = {
-        "معامل يونج": "young_modulus",
-        "الصلابة Shore A": "shore_A",
-        "الدفع الأقصى": "max_thrust",
+        t("governing_property"): "young_modulus",
+        "Shore A": "shore_A",
+        "Max Thrust": "max_thrust",
     }
     use_real_data = st.sidebar.checkbox(
-        "استخدام البيانات التجريبية (65°C)",
+        t("use_exp_data"),
         value=True,
-        help="لو فعلت، هتستخدم بياناتك الحقيقية. لو لأ، هتستخدم قيم أدبيات.",
         key="use_real_data_checkbox",
     )
 else:
     prop_options = {
-        "معامل يونج": "young_modulus",
-        "الصلابة Shore A": "shore_A",
+        t("governing_property"): "young_modulus",
+        "Shore A": "shore_A",
     }
+    use_real_data = False
 
-prop_label = st.sidebar.selectbox("اختر الخاصية", list(prop_options.keys()))
+prop_label = st.sidebar.selectbox(
+    t("select_property"),
+    list(prop_options.keys()),
+    key="prop_label_selector",
+)
 prop_key = prop_options[prop_label]
 
 # ============================================================
-# إعدادات Ea و k
+# طاقة التنشيط
 # ============================================================
-st.sidebar.header("🌡️ طاقة التنشيط Ea")
+st.sidebar.header(t("ea_header"))
 
 if prop["has_real_data"]:
-    # استخلاص k من البيانات الفعلية
     d = prop["experimental_data"][prop_key]
     t_data = np.array(d["t"], dtype=float)
     y_data = np.array(d["y"], dtype=float)
@@ -397,38 +438,37 @@ if prop["has_real_data"]:
         k_vals = (y_data / y0_data - 1) / t_data
     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
     k_obs_calc = float(np.mean(k_vals))
-
-    # Ea من الأدبيات (لأن عندنا نقطة واحدة بس)
     Ea_kJ = float(prop["Ea_default"])
-
     st.sidebar.info(
-        f"**k من بياناتك:** {k_obs_calc:.6f} /day\n\n"
-        f"**Ea (من الأدبيات):** {Ea_kJ:.0f} kJ/mol"
+        f"**k (from data):** {k_obs_calc:.6f} /day\n\n"
+        f"**Ea (from literature):** {Ea_kJ:.0f} kJ/mol"
     )
-    st.sidebar.metric("Ea المستخدمة", f"{Ea_kJ:.0f} kJ/mol")
+    st.sidebar.metric("Ea Used", f"{Ea_kJ:.0f} kJ/mol")
 else:
     Ea_min, Ea_max = prop["Ea_range"]
     Ea_kJ = st.sidebar.slider(
-        "Ea (kJ/mol)",
+        t("ea_header"),
         min_value=float(Ea_min),
         max_value=float(Ea_max),
         value=float(prop["Ea_default"]),
         step=1.0,
-        help=f"النطاق الموصى به: {Ea_min}-{Ea_max} kJ/mol",
-    )        
+        key="ea_slider",
+    )
 
 # ============================================================
 # معيار الفشل
 # ============================================================
 st.sidebar.header(t("failure_criterion"))
 criterion = st.sidebar.selectbox(
-    "اختر المعيار",
+    t("select_criterion"),
     prop["failure_criteria"],
+    key="criterion_selector",
 )
 
 threshold_pct = st.sidebar.slider(
-    "النسبة المسموحة (%)",
+    t("allowed_change"),
     min_value=5.0, max_value=50.0, value=20.0, step=1.0,
+    key="threshold_slider",
 )
 
 # ============================================================
@@ -436,68 +476,67 @@ threshold_pct = st.sidebar.slider(
 # ============================================================
 st.sidebar.header(t("storage_header"))
 T_storage_C = st.sidebar.number_input(
-    "درجة حرارة التخزين (°C)",
+    t("storage_temp"),
     value=25.0, step=1.0,
+    key="storage_temp_input",
 )
 
 # ============================================================
-# ظروف الرطوبة (Peck Model)
+# ظروف الرطوبة
 # ============================================================
 st.sidebar.header(t("humidity_header"))
 use_humidity = st.sidebar.checkbox(
-    "تفعيل تأثير الرطوبة (Peck Model)",
+    t("use_humidity"),
     value=False,
-    help="يستخدم نموذج Peck لدمج تأثير الرطوبة مع الحرارة",
     key="use_humidity_check",
 )
 
 if use_humidity:
     RH_storage = st.sidebar.slider(
-        "الرطوبة النسبية (%)",
+        t("rh_storage"),
         0, 100, 50, 1,
         key="rh_storage_slider",
     )
     RH_ref = st.sidebar.number_input(
-        "الرطوبة المرجعية (%)",
+        t("rh_ref"),
         value=50, min_value=1, max_value=100,
         key="rh_ref_input",
     )
     n_humidity = st.sidebar.slider(
-        "معامل الرطوبة n",
+        t("n_humidity"),
         0.5, 3.0, 1.5, 0.1,
-        help="عادة 1-3 للبوليمرات",
         key="n_humidity_slider",
     )
 else:
     RH_storage = 50.0
     RH_ref = 50.0
     n_humidity = 1.0
+
 # ============================================================
 # الحسابات
 # ============================================================
-Ea = Ea_kJ * 1000
-T_storage_K = T_storage_C + 273.15
+R = 8.314
+T_ref_K = 298.15
 T_exp_C = 65.0
 T_exp_K = T_exp_C + 273.15
 
-# حساب k عند 65°C
+Ea = Ea_kJ * 1000
+T_storage_K = T_storage_C + 273.15
+
 if prop["has_real_data"]:
-    # من البيانات التجريبية
     d = prop["experimental_data"][prop_key]
-    t = np.array(d["t"], dtype=float)
-    y = np.array(d["y"], dtype=float)
-    y0 = d["y0"]
+    t_data = np.array(d["t"], dtype=float)
+    y_data = np.array(d["y"], dtype=float)
+    y0_data = d["y0"]
     with np.errstate(divide='ignore', invalid='ignore'):
-        k_vals = (y / y0 - 1) / t
+        k_vals = (y_data / y0_data - 1) / t_data
     k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
     k_obs = float(np.mean(k_vals))
-    data_source = "Experimental data (65 c)"
+    data_source = "Experimental data (65 C)"
 else:
-    # من الأدبيات
     k_obs = prop["k_exp_65C"]
     data_source = f"Literature values ({prop['reference']})"
 
-# حساب A من k_obs
 A_arr = k_obs / np.exp(-Ea / (R * T_exp_K))
 
 def k_at(T_K):
@@ -505,7 +544,8 @@ def k_at(T_K):
 
 k_storage = k_at(T_storage_K)
 k_ref = k_at(T_ref_K)
-# حساب عامل الرطوبة (Peck Model)
+
+# الرطوبة
 if use_humidity:
     RH_factor_storage = (RH_storage / RH_ref) ** n_humidity
     RH_factor_ref = 1.0
@@ -516,33 +556,33 @@ else:
 AF = (k_storage * RH_factor_storage) / (k_ref * RH_factor_ref)
 
 # ============================================================
-# عرض المعلومات
+# عرض معلومات المعايرة
 # ============================================================
 st.markdown(f"""
 <div class="info-box">
-<b>📌 معايرة النموذج:</b><br>
-• <b>نوع الوقود:</b> {propellant_key}<br>
-• <b>الخاصية:</b> {prop_label}<br>
-• <b>مصدر البيانات:</b> {data_source}<br>
-• <b>k عند 65°C:</b> {k_obs:.6f} /day → {k_obs*100:.4f}% يوميًا<br>
-• <b>معامل Arrhenius A:</b> {A_arr:.4e} /day
+<b>{t("prop_info")}:</b><br>
+• <b>{t("propellant_type")}:</b> {propellant_key.split(' - ')[0]}<br>
+• <b>{t("governing_property")}:</b> {prop_label}<br>
+• <b>{t("csv_data")}:</b> {data_source}<br>
+• <b>k at 65°C:</b> {k_obs:.6f} /day<br>
+• <b>Arrhenius A:</b> {A_arr:.4e} /day
 </div>
 """, unsafe_allow_html=True)
 
 # ============================================================
 # المؤشرات
 # ============================================================
-st.header("📊 المؤشرات الأساسية")
+st.header(t("results_header"))
 
 col1, col2, col3 = st.columns(3)
-col1.metric("⚡ معامل التسريع AF", f"{AF:.3f}")
-col2.metric("🌡️ k عند التخزين", f"{k_storage:.4e} /day")
-col3.metric("📅 k عند 25°C", f"{k_ref:.4e} /day")
+col1.metric(t("af_label"), f"{AF:.3f}")
+col2.metric(t("k_storage"), f"{k_storage:.4e} /day")
+col3.metric(t("k_ref"), f"{k_ref:.4e} /day")
 
 # ============================================================
 # العمر الافتراضي
 # ============================================================
-st.header("⏳ العمر الافتراضي")
+st.header(t("life_header"))
 
 k_effective = k_storage * RH_factor_storage
 t_fail_days = (threshold_pct / 100) / k_effective
@@ -551,349 +591,118 @@ t_fail_years = t_fail_days / 365
 st.markdown(f"""
 <div class="success-box">
     <h2 style="color: #155724; margin: 0;">
-    🎯 العمر عند {T_storage_C:.1f}°C = {t_fail_years:.2f} سنة
+    🎯 {t("life_header")}: {t_fail_years:.2f} {t("life_years")}
     </h2>
     <p style="margin: 10px 0 0 0; color: #155724;">
-    <b>معيار الفشل:</b> {criterion}<br>
-    <b>المدة بالأيام:</b> {t_fail_days:.0f} يوم
+    <b>{t("failure_mode")}:</b> {criterion}<br>
+    <b>{t("duration_days")}:</b> {t_fail_days:.0f}
     </p>
 </div>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# رسم التحقق (لو بيانات حقيقية)
+# رسم التحقق
 # ============================================================
-if has_valid_experimental_data(prop):
-    st.header("🔬 التحقق: النموذج مقابل البيانات التجريبية")
-    
+if prop["has_real_data"] and use_real_data:
+    st.header("🔬 Validation: Model vs Experimental Data")
     d = prop["experimental_data"][prop_key]
     t_data = np.array(d["t"], dtype=float)
     y_data = np.array(d["y"], dtype=float)
     y0 = d["y0"]
-    
+
     fig, ax = plt.subplots(figsize=(11, 4.5))
     fig.patch.set_facecolor('#f5f7fa')
     ax.set_facecolor('#ffffff')
-    
-    ax.scatter(t_data, y_data, s=120, c='red', zorder=5,
-               label=f'بيانات تجريبية ({T_exp_C:.0f}°C)')
-    
+    ax.scatter(t_data, y_data, s=120, c='red', zorder=5, label='Experimental')
     t_smooth = np.linspace(0, max(t_data) * 1.2, 100)
     y_smooth = y0 * (1 + k_obs * t_smooth)
-    ax.plot(t_smooth, y_smooth, 'b-', linewidth=2.5,
-            label=f'النموذج عند {T_exp_C:.0f}°C')
-    
-    ax.set_xlabel('الزمن (يوم)', fontsize=12)
-    ax.set_ylabel(f'{d["label"]} ({d["unit"]})', fontsize=12)
-    ax.set_title(f'مطابقة النموذج للبيانات عند {T_exp_C:.0f}°C',
-                 fontsize=13, fontweight='bold')
-    ax.legend(fontsize=10)
+    ax.plot(t_smooth, y_smooth, 'b-', linewidth=2.5, label='Model')
+    ax.set_xlabel('Time (days)')
+    ax.set_ylabel('Property')
+    ax.set_title('Model vs Experimental Data')
+    ax.legend()
     ax.grid(True, alpha=0.3)
     st.pyplot(fig)
-    
-    st.caption(f"✅ النموذج مضبوط تلقائيًا على بياناتك مع k = {k_obs:.6f}/day")
-
-# ============================================================
-# رسم تطور الخاصية عند التخزين
-# ============================================================
-st.header(f"📈 تطور {prop_label} عند {T_storage_C:.0f}°C")
-
-# القيمة الابتدائية
-if has_valid_experimental_data(prop):
-    y0_display = prop["experimental_data"][prop_key]["y0"]
-    unit_display = prop["experimental_data"][prop_key]["unit"]
-else:
-    y0_display = 1.0
-    unit_display = "قيمة نسبية"
-
-fig2, ax2 = plt.subplots(figsize=(11, 5))
-fig2.patch.set_facecolor('#f5f7fa')
-ax2.set_facecolor('#ffffff')
-
-t_arr = np.linspace(0, max(365 * 50, t_fail_days * 1.5), 2000)
-y_arr = y0_display * (1 + k_storage * t_arr)
-threshold_val = y0_display * (1 + threshold_pct / 100)
-
-ax2.plot(t_arr / 365, y_arr, 'b-', linewidth=2.5, label='القيمة المتوقعة')
-ax2.axhline(threshold_val, color='r', linestyle='--', linewidth=2,
-            label=f'حد الفشل (+{threshold_pct:.0f}%)')
-
-if t_fail_years < 50:
-    ax2.axvline(t_fail_years, color='g', linestyle=':', linewidth=2.5,
-                label=f'العمر = {t_fail_years:.2f} سنة')
-    ax2.scatter([t_fail_years], [threshold_val], s=200, c='red',
-                zorder=5, marker='X')
-
-ax2.set_xlabel('الزمن (سنة)', fontsize=12)
-ax2.set_ylabel(f'{prop_label} ({unit_display})', fontsize=12)
-ax2.set_title(f'منحنى التقادم عند {T_storage_C:.0f}°C',
-              fontsize=13, fontweight='bold')
-ax2.legend(fontsize=10)
-ax2.grid(True, alpha=0.3)
-st.pyplot(fig2)
 
 # ============================================================
 # جدول المقارنة
 # ============================================================
-st.header("🌡️ مقارنة العمر عند درجات حرارة مختلفة")
+st.header(t("comparison_header"))
 
-data = []
+data_table = []
 for T_C in [15, 20, 25, 30, 35, 40, 50, 60, 65]:
     T_K = T_C + 273.15
-    k = k_at(T_K)
+    k = k_at(T_K) * (RH_factor_storage if use_humidity else 1.0)
     t_y = (threshold_pct / 100) / k / 365
-    AF_i = k / k_ref
-    data.append({
-        "الحرارة (°C)": f"{T_C}",
-        "k (/day)": f"{k:.4e}",
-        "معامل التسريع": f"{AF_i:.2f}",
-        "العمر (سنة)": f"{t_y:.2f}" if t_y < 1000 else "> 1000",
+    data_table.append({
+        t("temperature"): f"{T_C}",
+        t("k_per_day"): f"{k:.4e}",
+        t("life_col"): f"{t_y:.2f}" if t_y < 1000 else "> 1000",
     })
 
-st.dataframe(pd.DataFrame(data), use_container_width=True)
+st.dataframe(pd.DataFrame(data_table), use_container_width=True)
 
 # ============================================================
-# مقارنة أنواع الوقود
-# ============================================================
-st.header("🔥 مقارنة أنواع الوقود المختلفة")
-st.caption(f"باستخدام Ea = {Ea_kJ:.0f} kJ/mol و معيار {threshold_pct:.0f}%")
-
-comparison = []
-for name, p in PROPELLANT_TYPES.items():
-    k_65 = p["k_exp_65C"]
-    A = k_65 / np.exp(-Ea / (R * T_exp_K))
-    k_25 = A * np.exp(-Ea / (R * T_ref_K))
-    life_25 = (threshold_pct / 100) / k_25 / 365
-    comparison.append({
-        "نوع الوقود": name.split(" - ")[0],
-        "k عند 65°C": f"{k_65:.4e}",
-        "Ea الافتراضي (kJ/mol)": f"{p['Ea_default']:.0f}",
-        "العمر عند 25°C (سنة)": f"{life_25:.2f}" if life_25 < 1000 else "> 1000",
-    })
-
-st.dataframe(pd.DataFrame(comparison), use_container_width=True)
-
-# ============================================================
-# بيانات تجريبية
-# ============================================================
-if prop["has_real_data"]:
-    with st.expander(f"📋 عرض البيانات التجريبية ({propellant_key})"):
-        d = prop["experimental_data"][prop_key]
-        df_display = pd.DataFrame({
-            "الزمن (يوم)": d["t"],
-            f"{d['label']} ({d['unit']})": d["y"],
-        })
-        st.dataframe(df_display, use_container_width=True)
-
-# ============================================================
-# تحذير
-# ============================================================
-st.warning(
-    f"⚠️ **تنبيه:** النموذج معاير بـ {data_source}. "
-    f"القيم المعروضة تقديرية. للدقة العالية، يُنصح ببيانات من 3 درجات حرارة على الأقل."
-)
-# ============================================================
-# ميزة رفع CSV لتحليل بيانات جديدة
+# تصدير PDF
 # ============================================================
 st.markdown("---")
-st.header("📤 رفع بيانات تجريبية جديدة (CSV)")
-st.caption("ارفع ملف CSV فيه بيانات التقادم المعجل لتحليلها فورًا")
-
-uploaded_file = st.file_uploader(
-    "اختر ملف CSV",
-    type=["csv"],
-    help="الأعمدة المطلوبة: temperature_C, time_days, property_name"
-)
-
-if uploaded_file is not None:
-    try:
-        # قراءة الملف
-        df_upload = pd.read_csv(uploaded_file)
-        
-        st.success("✅ تم رفع الملف بنجاح!")
-        
-        # عرض البيانات
-        st.subheader("📋 البيانات المرفوعة")
-        st.dataframe(df_upload, use_container_width=True)
-        
-        # التحقق من الأعمدة
-        required_cols = ['temperature_C', 'time_days']
-        if not all(col in df_upload.columns for col in required_cols):
-            st.error(
-                f"⚠️ الملف لازم يحتوي على الأعمدة: {required_cols}. "
-                f"الأعمدة الموجودة: {list(df_upload.columns)}"
-            )
-        else:
-            # اختيار الخاصية
-            property_cols = [c for c in df_upload.columns 
-                           if c not in ['temperature_C', 'time_days']]
-            
-            if len(property_cols) == 0:
-                st.error("⚠️ لا توجد أعمدة خصائص للتحليل")
-            else:
-                selected_prop = st.selectbox(
-                    "اختر الخاصية للتحليل",
-                    property_cols
-                )
-                
-                # حساب k لكل درجة حرارة
-                st.subheader("🔬 تحليل البيانات")
-                
-                results = []
-                for T in sorted(df_upload['temperature_C'].unique()):
-                    sub = df_upload[df_upload['temperature_C'] == T]
-                    sub = sub.dropna(subset=[selected_prop])
-                    
-                    if len(sub) < 2:
-                        continue
-                    
-                    t_vals = sub['time_days'].values
-                    y_vals = sub[selected_prop].values
-                    y0 = y_vals[0]
-                    
-                    with np.errstate(divide='ignore', invalid='ignore'):
-                        k_vals = (y_vals / y0 - 1) / t_vals
-                    k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
-                    k_mean = float(np.mean(k_vals))
-                    
-                    results.append({
-                        'T_C': T,
-                        'T_K': T + 273.15,
-                        'k': k_mean,
-                        'k_std': float(np.std(k_vals)),
-                        'n_points': len(sub),
-                        'y0': y0,
-                    })
-                
-                results_df = pd.DataFrame(results)
-                st.dataframe(results_df, use_container_width=True)
-                
-                # حساب Ea من البيانات لو فيه 3 درجات حرارة
-                if len(results_df) >= 3:
-                    inv_T = 1 / results_df['T_K'].values
-                    ln_k = np.log(np.abs(results_df['k'].values))
-                    slope, intercept = np.polyfit(inv_T, ln_k, 1)
-                    Ea_calc = -slope * R / 1000  # kJ/mol
-                    A_calc = np.exp(intercept)
-                    
-                    st.success(f"✅ **طاقة التنشيط Ea = {Ea_calc:.2f} kJ/mol**")
-                    st.info(f"**معامل Arrhenius A = {A_calc:.4e} /day**")
-                    
-                    # حساب العمر عند 25°C
-                    k_25 = A_calc * np.exp(-Ea_calc * 1000 / (R * T_ref_K))
-                    life_25 = (threshold_pct / 100) / k_25 / 365
-                    
-                    col1, col2 = st.columns(2)
-                    col1.metric("Ea المحسوبة", f"{Ea_calc:.1f} kJ/mol")
-                    col2.metric("العمر عند 25°C", f"{life_25:.2f} سنة")
-                    
-                    # رسم Arrhenius
-                    fig_a, ax_a = plt.subplots(figsize=(10, 5))
-                    fig_a.patch.set_facecolor('#f5f7fa')
-                    ax_a.scatter(inv_T * 1000, ln_k, s=150, c='red', zorder=5)
-                    t_line = np.linspace(inv_T.min(), inv_T.max(), 100)
-                    ax_a.plot(t_line * 1000, slope * t_line + intercept, 
-                             'b--', linewidth=2, 
-                             label=f'Ea = {Ea_calc:.1f} kJ/mol')
-                    ax_a.set_xlabel('1000/T (K⁻¹)')
-                    ax_a.set_ylabel('ln(k)')
-                    ax_a.set_title('Arrhenius Plot', fontweight='bold')
-                    ax_a.legend()
-                    ax_a.grid(True, alpha=0.3)
-                    st.pyplot(fig_a)
-                else:
-                    st.warning(
-                        f"⚠️ عندك {len(results_df)} درجة حرارة فقط. "
-                        "لحساب Ea بدقة، محتاج 3 درجات على الأقل."
-                    )
-    
-    except Exception as e:
-        st.error(f"❌ خطأ في قراءة الملف: {str(e)}")
-        # ============================================================
-# ============================================================
-# تصدير تقرير PDF
-# ============================================================
-st.markdown("---")
-st.header("📄 تصدير تقرير PDF")
-st.caption("حمّل تقرير شامل يحتوي على كل النتائج والتحليلات")
-
-
-def clean_text_for_pdf(text):
-    """إزالة أي حروف عربية من النص (fpdf2 مش بيدعم العربي)"""
-    import re
-    cleaned = re.sub(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+', '', text)
-    return ' '.join(cleaned.split()).strip()
-
+st.header(t("pdf_header"))
 
 def generate_pdf_report():
-    """إنشاء تقرير PDF احترافي بالنتائج"""
-
     pdf = FPDF()
     pdf.add_page()
-
-    # ===== العنوان الرئيسي =====
     pdf.set_font("Arial", "B", 18)
-    pdf.set_text_color(30, 58, 138)  # أزرق غامق
-    pdf.cell(0, 12, "Solid Rocket Motor - Aging Simulation Report",
-             ln=True, align="C")
+    pdf.set_text_color(30, 58, 138)
+    pdf.cell(0, 12, "Solid Rocket Motor - Aging Simulation Report", ln=True, align="C")
     pdf.ln(3)
-
-    # خط فاصل
     pdf.set_draw_color(30, 58, 138)
     pdf.set_line_width(0.5)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
 
-    # ===== التاريخ =====
     pdf.set_font("Arial", "I", 10)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 6, f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-             ln=True, align="R")
+    pdf.cell(0, 6, f"Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True, align="R")
     pdf.ln(3)
 
-    # ===== 1. معلومات الوقود =====
     pdf.set_font("Arial", "B", 13)
     pdf.set_text_color(0, 0, 0)
     pdf.cell(0, 9, "1. Propellant Information", ln=True)
     pdf.ln(2)
-
     pdf.set_font("Arial", "", 10)
     info_lines = [
-                   f"Propellant Type: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
-            f"Aging Mechanism: {prop.get('aging_mechanism_en', 'N/A')}",           
+        f"Propellant Type: {clean_text_for_pdf(propellant_key).split(' - ')[0]}",
+        f"Aging Mechanism: {prop.get('aging_mechanism_en', 'N/A')}",
         f"Stabilizers: {prop.get('stabilizers_en', 'N/A')}",
-            f"Reference: {prop.get('reference_en', prop.get('reference', 'N/A'))}",
+        f"Reference: {prop.get('reference_en', prop.get('reference', 'N/A'))}",
     ]
     for line in info_lines:
         pdf.cell(0, 6, f"  - {line}", ln=True)
     pdf.ln(3)
 
-    # ===== 2. Simulation Parameters =====
     pdf.set_font("Arial", "B", 13)
     pdf.cell(0, 9, "2. Simulation Parameters", ln=True)
     pdf.ln(2)
     pdf.set_font("Arial", "", 10)
     prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
     param_lines = [
-            f"Governing Property: {prop_label_en}",
-            f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
-            f"  [Literature reference: {prop.get('Ea_default', 0):.0f} kJ/mol]",
-            f"Arrhenius Constant (A): {A_arr:.4e} /day",
-            f"Failure Criterion: {prop_label_en} change",
-            f"Allowed Change: {threshold_pct:.1f} %",
-            f"Storage Temperature: {T_storage_C:.1f} C",
-            f"Reference Temperature: 25.0 C",
-            f"Experimental Temperature: {T_exp_C:.1f} C",
-        ]
+        f"Governing Property: {prop_label_en}",
+        f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
+        f"  [Literature reference: {prop.get('Ea_default', 0):.0f} kJ/mol]",
+        f"Arrhenius Constant (A): {A_arr:.4e} /day",
+        f"Failure Criterion: {prop_label_en} change",
+        f"Allowed Change: {threshold_pct:.1f} %",
+        f"Storage Temperature: {T_storage_C:.1f} C",
+        f"Reference Temperature: 25.0 C",
+        f"Experimental Temperature: {T_exp_C:.1f} C",
+    ]
     for line in param_lines:
         pdf.cell(0, 6, f"  - {line}", ln=True)
     pdf.ln(3)
 
-    # ===== 3. Results =====
     pdf.set_font("Arial", "B", 13)
     pdf.cell(0, 9, "3. Simulation Results", ln=True)
     pdf.ln(2)
-
     pdf.set_font("Arial", "", 10)
     result_lines = [
         f"Acceleration Factor (AF): {AF:.3f}",
@@ -904,46 +713,36 @@ def generate_pdf_report():
         pdf.cell(0, 6, f"  - {line}", ln=True)
     pdf.ln(2)
 
-    # صندوق النتيجة الرئيسية
     pdf.set_fill_color(212, 237, 218)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, f"ESTIMATED SHELF LIFE: {t_fail_years:.2f} years "
-                    f"({t_fail_days:.0f} days)",
+    pdf.cell(0, 10, f"ESTIMATED SHELF LIFE: {t_fail_years:.2f} years ({t_fail_days:.0f} days)",
              ln=True, align="C", fill=True)
     pdf.ln(5)
 
-    # ===== 4. Life at Different Temperatures =====
     pdf.set_font("Arial", "B", 13)
     pdf.cell(0, 9, "4. Shelf Life vs Storage Temperature", ln=True)
     pdf.ln(2)
-
-    # رأس الجدول
     pdf.set_font("Arial", "B", 10)
     pdf.set_fill_color(230, 230, 230)
     pdf.cell(50, 8, "Temperature (C)", border=1, align="C", fill=True)
     pdf.cell(60, 8, "k (/day)", border=1, align="C", fill=True)
     pdf.cell(60, 8, "Life (years)", border=1, align="C", fill=True)
     pdf.ln()
-
-    # بيانات الجدول
     pdf.set_font("Arial", "", 10)
     for T_C in [15, 20, 25, 30, 35, 40, 50, 60, 65]:
         T_K = T_C + 273.15
-        k = k_at(T_K)
+        k = k_at(T_K) * (RH_factor_storage if use_humidity else 1.0)
         t_y = (threshold_pct / 100) / k / 365
         life_str = f"{t_y:.2f}" if t_y < 1000 else "> 1000"
         pdf.cell(50, 7, f"{T_C}", border=1, align="C")
         pdf.cell(60, 7, f"{k:.4e}", border=1, align="C")
         pdf.cell(60, 7, life_str, border=1, align="C")
         pdf.ln()
-
     pdf.ln(5)
 
-    # ===== 5. Notes =====
     pdf.set_font("Arial", "B", 13)
     pdf.cell(0, 9, "5. Important Notes", ln=True)
     pdf.ln(2)
-
     pdf.set_font("Arial", "", 10)
     notes = [
         "- This report is generated by an estimation tool based on",
@@ -952,223 +751,213 @@ def generate_pdf_report():
         "  before critical decisions.",
         "- For higher accuracy, experimental data at 3 or more",
         "  temperatures is recommended.",
-        f"- Data source used: 65 c Experimental Data"
+        "- Data source used: 65 C Experimental Data",
     ]
     for line in notes:
         pdf.cell(0, 6, line, ln=True)
-
     pdf.ln(10)
 
-    # التوقيع
     pdf.set_font("Arial", "I", 9)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 6, "Generated by: Rocket Aging Simulation Platform",
-             ln=True, align="C")
-    pdf.cell(0, 6, "https://rocket-aging-sim.streamlit.app",
-             ln=True, align="C")
+    pdf.cell(0, 6, "Generated by: Rocket Aging Simulation Platform", ln=True, align="C")
+    pdf.cell(0, 6, "https://rocket-aging-sim.streamlit.app", ln=True, align="C")
 
     return bytes(pdf.output())
 
-
-# زر تحميل التقرير
-if st.button("📥 إنشاء التقرير PDF", type="primary"):
+if st.button(t("pdf_generate"), type="primary", key="pdf_generate_btn"):
     try:
         pdf_bytes = generate_pdf_report()
-        st.success("✅ التقرير جاهز للتحميل!")
+        st.success("Report ready!")
         st.download_button(
-            label="💾 تحميل التقرير PDF",
+            label=t("pdf_download"),
             data=pdf_bytes,
             file_name=f"aging_report_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
             mime="application/pdf",
-            key="pdf_download_btn"
+            key="pdf_download_btn",
         )
     except Exception as e:
-        st.error(f"❌ خطأ في إنشاء التقرير: {str(e)}")
+        st.error(f"Error: {str(e)}")
+
 # ============================================================
-# المقارنة التفصيلية بين نوعين من الوقود
+# رفع CSV
 # ============================================================
 st.markdown("---")
-st.header("⚔️ مقارنة تفصيلية بين نوعين من الوقود")
-st.caption("قارن بين نوعين: k، Ea، والعمر الافتراضي عند درجات حرارة مختلفة")
+st.header(t("csv_header"))
+st.caption(t("csv_caption"))
+
+uploaded_file = st.file_uploader(
+    t("csv_upload"),
+    type=["csv"],
+    key="csv_uploader_main",
+)
+
+if uploaded_file is not None:
+    try:
+        df_upload = pd.read_csv(uploaded_file)
+        st.success(t("csv_success"))
+        st.subheader(t("csv_data"))
+        st.dataframe(df_upload, use_container_width=True)
+
+        required_cols = ['temperature_C', 'time_days']
+        if all(col in df_upload.columns for col in required_cols):
+            property_cols = [c for c in df_upload.columns if c not in required_cols]
+            if property_cols:
+                selected_prop = st.selectbox(
+                    t("select_property_analysis"),
+                    property_cols,
+                    key="csv_prop_selector",
+                )
+                st.subheader(t("csv_analysis"))
+                results = []
+                for T in sorted(df_upload['temperature_C'].unique()):
+                    sub = df_upload[df_upload['temperature_C'] == T].dropna(subset=[selected_prop])
+                    if len(sub) < 2:
+                        continue
+                    t_vals = sub['time_days'].values
+                    y_vals = sub[selected_prop].values
+                    y0 = y_vals[0]
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        k_vals = (y_vals / y0 - 1) / t_vals
+                    k_vals = k_vals[~np.isnan(k_vals) & ~np.isinf(k_vals)]
+                    results.append({
+                        'T_C': T,
+                        'T_K': T + 273.15,
+                        'k': float(np.mean(k_vals)),
+                        'n_points': len(sub),
+                    })
+                results_df = pd.DataFrame(results)
+                st.dataframe(results_df, use_container_width=True)
+
+                if len(results_df) >= 3:
+                    inv_T = 1 / results_df['T_K'].values
+                    ln_k = np.log(np.abs(results_df['k'].values))
+                    slope, intercept = np.polyfit(inv_T, ln_k, 1)
+                    Ea_calc = -slope * R / 1000
+                    A_calc = np.exp(intercept)
+                    st.success(f"Ea = {Ea_calc:.2f} kJ/mol")
+                    st.info(f"A = {A_calc:.4e} /day")
+                else:
+                    st.warning("Need at least 3 temperatures for Ea calculation.")
+    except Exception as e:
+        st.error(f"Error reading file: {str(e)}")
+
+# ============================================================
+# مقارنة نوعين
+# ============================================================
+st.markdown("---")
+st.header(t("comparison_types"))
+st.caption(t("comparison_caption"))
 
 col_a, col_b = st.columns(2)
-
 with col_a:
-    type_A = st.selectbox(
-        "النوع الأول (A)",
-        list(PROPELLANT_TYPES.keys()),
-        index=0,
-        key="compare_type_A",
-    )
-
+    type_A = st.selectbox(t("type_a"), list(PROPELLANT_TYPES.keys()), index=0, key="compare_type_A")
 with col_b:
-    type_B = st.selectbox(
-        "النوع الثاني (B)",
-        list(PROPELLANT_TYPES.keys()),
-        index=2,
-        key="compare_type_B",
-    )
+    type_B = st.selectbox(t("type_b"), list(PROPELLANT_TYPES.keys()), index=2, key="compare_type_B")
 
-if st.button("🔍 قارن الآن", type="primary", key="compare_btn"):
+if st.button(t("compare_btn"), type="primary", key="compare_btn_key"):
     prop_A = PROPELLANT_TYPES[type_A]
     prop_B = PROPELLANT_TYPES[type_B]
 
-    # حساب العمر لكل نوع
     results = []
     for name, p in [(type_A, prop_A), (type_B, prop_B)]:
         k_65 = p["k_exp_65C"]
         A_i = k_65 / np.exp(-Ea / (R * T_exp_K))
         k_25 = A_i * np.exp(-Ea / (R * T_ref_K))
         k_stor = A_i * np.exp(-Ea / (R * T_storage_K))
-
         life_25 = (threshold_pct / 100) / k_25 / 365
         life_stor = (threshold_pct / 100) / k_stor / 365
-
         results.append({
-            "النوع": name.split(" - ")[0],
-            "k عند 65°C": f"{k_65:.4e}",
+            "Type": name.split(" - ")[0],
+            "k at 65°C": f"{k_65:.4e}",
             "Ea (kJ/mol)": f"{p['Ea_default']:.0f}",
-            "العمر عند 25°C": f"{life_25:.2f}",
-            f"العمر عند {T_storage_C:.0f}°C": f"{life_stor:.2f}",
+            "Life at 25°C": f"{life_25:.2f}",
+            f"Life at {T_storage_C:.0f}°C": f"{life_stor:.2f}",
         })
-
-    # عرض الجدول
     df_compare = pd.DataFrame(results).T
-    df_compare.columns = ["النوع A", "النوع B"]
+    df_compare.columns = ["Type A", "Type B"]
     st.dataframe(df_compare, use_container_width=True)
 
-    # رسم مقارن
-    st.subheader("📈 منحنى العمر الافتراضي مقابل درجة الحرارة")
+    st.subheader(t("comparison_curve"))
     fig_cmp, ax_cmp = plt.subplots(figsize=(11, 5))
     fig_cmp.patch.set_facecolor('#f5f7fa')
     ax_cmp.set_facecolor('#ffffff')
-
     temps_plot = np.linspace(15, 70, 50)
     colors = ['steelblue', 'crimson']
-
     for i, (name, p) in enumerate([(type_A, prop_A), (type_B, prop_B)]):
         k_65 = p["k_exp_65C"]
         A_i = k_65 / np.exp(-Ea / (R * T_exp_K))
         k_arr = A_i * np.exp(-Ea / (R * (temps_plot + 273.15)))
         life_arr = (threshold_pct / 100) / k_arr / 365
-        ax_cmp.plot(temps_plot, life_arr, linewidth=2.5,
-                    color=colors[i], label=name.split(" - ")[0])
-
-    ax_cmp.set_xlabel("درجة الحرارة (°C)", fontsize=12)
-    ax_cmp.set_ylabel("العمر الافتراضي (سنة)", fontsize=12)
-    ax_cmp.set_title("مقارنة العمر بين النوعين", fontsize=13, fontweight='bold')
+        ax_cmp.plot(temps_plot, life_arr, linewidth=2.5, color=colors[i], label=name.split(" - ")[0])
+    ax_cmp.set_xlabel("Temperature (°C)")
+    ax_cmp.set_ylabel("Shelf Life (years)")
+    ax_cmp.set_title("Shelf Life vs Temperature")
     ax_cmp.set_yscale('log')
-    ax_cmp.legend(fontsize=11)
+    ax_cmp.legend()
     ax_cmp.grid(True, alpha=0.3, which='both')
     st.pyplot(fig_cmp)
 
-    # حساب فرق النسبة
-    k_65_A = prop_A["k_exp_65C"]
-    k_65_B = prop_B["k_exp_65C"]
-    ratio = k_65_A / k_65_B
-
-    st.info(
-        f"**الفرق بين النوعين:**\n\n"
-        f"- النوع **A** ({type_A.split(' - ')[0]}) له k = {k_65_A:.4e} /day\n"
-        f"- النوع **B** ({type_B.split(' - ')[0]}) له k = {k_65_B:.4e} /day\n"
-        f"- **النسبة**: {ratio:.2f}x  →  "
-        f"النوع {'A' if ratio > 1 else 'B'} يتقادم أسرع بـ {abs(ratio - 1)*100:.1f}%"
-    )
 # ============================================================
-# محاكاة Monte Carlo - توزيع احتمالي للعمر
+# Monte Carlo
 # ============================================================
 st.markdown("---")
-st.header("🎲 محاكاة Monte Carlo - التوزيع الاحتمالي")
-st.caption("بدل رقم واحد، هتطلعلك عيّنة احتمالية للعمر بناءً على عدم اليقين في Ea و k")
+st.header(t("mc_header"))
+st.caption(t("mc_caption"))
 
 col_mc1, col_mc2, col_mc3 = st.columns(3)
 with col_mc1:
-    n_sim = st.number_input("عدد مرات المحاكاة", value=1000, 
-                            min_value=100, max_value=10000, step=100,
-                            key="mc_n_sim")
+    n_sim = st.number_input(t("mc_n_sim"), value=1000, min_value=100, max_value=10000, step=100, key="mc_n_sim")
 with col_mc2:
-    Ea_uncertainty = st.slider("عدم اليقين في Ea (%)", 0, 30, 10,
-                               key="mc_ea_unc")
+    Ea_uncertainty = st.slider(t("mc_ea_unc"), 0, 30, 10, key="mc_ea_unc")
 with col_mc3:
-    k_uncertainty = st.slider("عدم اليقين في k (%)", 0, 50, 20,
-                              key="mc_k_unc")
+    k_uncertainty = st.slider(t("mc_k_unc"), 0, 50, 20, key="mc_k_unc")
 
-if st.button("🎲 تشغيل Monte Carlo", type="primary", key="mc_run_btn"):
+if st.button(t("mc_run"), type="primary", key="mc_run_btn"):
     np.random.seed(42)
-
-    # توزيعات
     Ea_samples = np.random.normal(Ea_kJ, Ea_kJ * Ea_uncertainty / 100, n_sim)
     k_65_samples = np.random.normal(k_obs, k_obs * k_uncertainty / 100, n_sim)
-
-    # ضمان قيم موجبة
     Ea_samples = np.abs(Ea_samples)
     k_65_samples = np.abs(k_65_samples)
-
-    # حساب العمر لكل محاكاة
     life_samples = []
     for Ea_i, k_65_i in zip(Ea_samples, k_65_samples):
         A_i = k_65_i / np.exp(-Ea_i * 1000 / (R * T_exp_K))
         k_stor_i = A_i * np.exp(-Ea_i * 1000 / (R * T_storage_K))
         life_i = (threshold_pct / 100) / k_stor_i / 365
         life_samples.append(life_i)
-
     life_samples = np.array(life_samples)
 
-    # إحصائيات
-    st.subheader("📊 نتائج Monte Carlo")
-
+    st.subheader(t("mc_results"))
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("المتوسط", f"{np.mean(life_samples):.2f} سنة")
-    c2.metric("الوسيط", f"{np.median(life_samples):.2f} سنة")
-    c3.metric("P5 (تحفظي)", f"{np.percentile(life_samples, 5):.2f} سنة")
-    c4.metric("P95 (متفائل)", f"{np.percentile(life_samples, 95):.2f} سنة")
+    c1.metric(t("mc_mean"), f"{np.mean(life_samples):.2f} {t('years')}")
+    c2.metric(t("mc_median"), f"{np.median(life_samples):.2f} {t('years')}")
+    c3.metric(t("mc_p5"), f"{np.percentile(life_samples, 5):.2f} {t('years')}")
+    c4.metric(t("mc_p95"), f"{np.percentile(life_samples, 95):.2f} {t('years')}")
 
-    # Histogram
     fig_mc, ax_mc = plt.subplots(figsize=(11, 5))
     fig_mc.patch.set_facecolor('#f5f7fa')
     ax_mc.set_facecolor('#ffffff')
-
-    ax_mc.hist(life_samples, bins=50, color='steelblue',
-               edgecolor='white', alpha=0.8)
-    ax_mc.axvline(np.mean(life_samples), color='red',
-                  linestyle='--', linewidth=2, label='المتوسط')
-    ax_mc.axvline(np.percentile(life_samples, 5), color='orange',
-                  linestyle=':', linewidth=2, label='P5 (تحفظي)')
-    ax_mc.axvline(np.percentile(life_samples, 95), color='green',
-                  linestyle=':', linewidth=2, label='P95 (متفائل)')
-
-    ax_mc.set_xlabel('العمر (سنة)', fontsize=12)
-    ax_mc.set_ylabel('التكرار', fontsize=12)
-    ax_mc.set_title(f'توزيع العمر الاحتمالي ({n_sim} محاكاة)',
-                    fontsize=13, fontweight='bold')
+    ax_mc.hist(life_samples, bins=50, color='steelblue', edgecolor='white', alpha=0.8)
+    ax_mc.axvline(np.mean(life_samples), color='red', linestyle='--', linewidth=2, label=t("mc_mean"))
+    ax_mc.axvline(np.percentile(life_samples, 5), color='orange', linestyle=':', linewidth=2, label=t("mc_p5"))
+    ax_mc.axvline(np.percentile(life_samples, 95), color='green', linestyle=':', linewidth=2, label=t("mc_p95"))
+    ax_mc.set_xlabel("Shelf Life (years)")
+    ax_mc.set_ylabel("Frequency")
+    ax_mc.set_title(f"Monte Carlo Distribution ({n_sim} runs)")
     ax_mc.legend()
     ax_mc.grid(True, alpha=0.3)
     st.pyplot(fig_mc)
 
-    # تفسير
-    st.info(
-        f"**التفسير:** بناءً على {n_sim} محاكاة، "
-        f"العمر المتوقع بين **{np.percentile(life_samples, 5):.2f}** "
-        f"و **{np.percentile(life_samples, 95):.2f} سنة** بثقة 90%. "
-        f"القيمة الأكثر ترجيحًا (الوسيط) = **{np.median(life_samples):.2f} سنة**."
-    )
 # ============================================================
-# تصدير البيانات لبرنامج Abaqus
+# Abaqus Export
 # ============================================================
 st.markdown("---")
-st.header("🔧 تصدير البيانات لـ Abaqus")
-st.caption("حمّل الملفات الجاهزة للتشغيل في برنامج Abaqus/CAE")
-
-st.info(
-    "**ملاحظة:** Abaqus مش بيشتغل على الإنترنت. الملفات دي هتحمّلها "
-    "على جهازك وتشغّلها في Abaqus/CAE أو Abaqus Command."
-)
+st.header(t("abaqus_header"))
+st.caption(t("abaqus_caption"))
 
 col_abq1, col_abq2 = st.columns(2)
 
 with col_abq1:
-    if st.button("📄 تحميل ملف INP", type="primary", key="abq_inp_btn"):
-        # توليد ملف INP
+    if st.button(t("abaqus_inp"), type="primary", key="abq_inp_btn"):
         inp_content = f"""*HEADING
 Solid Rocket Motor Propellant - Aging Simulation
 Propellant: {clean_text_for_pdf(propellant_key).split(' - ')[0]}
@@ -1188,16 +977,14 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 **
 *SOLID SECTION, ELSET=PROP, MATERIAL=PROPELLANT
 **
-** Aging parameters
 ** Storage Temperature: {T_storage_C} C
 ** Humidity: {RH_storage if use_humidity else 50} %
 ** Shelf Life: {t_fail_years:.2f} years
 ** Ea: {Ea_kJ} kJ/mol
 ** k at 65C: {k_obs:.6f} /day
-**
 """
         st.download_button(
-            label="💾 تحميل ملف INP",
+            label="Download INP",
             data=inp_content.encode('utf-8'),
             file_name=f"propellant_aging_{datetime.now().strftime('%Y%m%d_%H%M')}.inp",
             mime="text/plain",
@@ -1205,143 +992,49 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
         )
 
 with col_abq2:
-    if st.button("🐍 تحميل سكريبت Python", type="primary", key="abq_py_btn"):
-        # توليد سكريبت Python لـ Abaqus
-        py_content = f'''# -*- coding: utf-8 -*-
-"""
-Abaqus Python Script - Solid Rocket Motor Propellant Aging
-Generated by Rocket Aging Simulation Platform
-Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-"""
-
+    if st.button(t("abaqus_py"), type="primary", key="abq_py_btn"):
+        py_content = f'''# Abaqus Python Script - Aging Simulation
 from abaqus import *
 from abaqusConstants import *
 from caeModules import *
 
-# ===== Model Parameters =====
-propellant_name = "{clean_text_for_pdf(propellant_key).split(' - ')[0]}"
-young_modulus = {Ea_kJ * 10:.2f}  # MPa (approx)
-poisson_ratio = 0.4999
-density = {prop.get('density', 1700.0) / 1e6:.4e}  # tonne/mm^3
-
-# ===== Aging Parameters =====
-storage_temp_C = {T_storage_C}
-humidity_percent = {RH_storage if use_humidity else 50}
-shelf_life_years = {t_fail_years:.2f}
-Ea_kJ_per_mol = {Ea_kJ:.1f}
-k_65C_per_day = {k_obs:.6f}
-
-# ===== Create Model =====
 model_name = 'PropellantAging'
 mdb.Model(name=model_name)
-
-# ===== Create Material =====
 mat = mdb.models[model_name].Material(name='PROPELLANT')
-mat.Elastic(table=((young_modulus, poisson_ratio), ))
-mat.Density(table=((density, ), ))
-mat.Hyperelastic(
-    materialType=NEO_HOOKE,
-    table=((0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), )
-)
-mat.Viscoelastic(
-    domain=TIME,
-    time=PRONY,
-    table=((0.1, 0.05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-           (0.05, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-           (0.02, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
-)
-
-# ===== Print Info =====
-print("=" * 60)
-print("Propellant Aging Model Created Successfully")
-print("=" * 60)
-print(f"Propellant: {{propellant_name}}")
-print(f"Storage Temperature: {{storage_temp_C}} C")
-print(f"Humidity: {{humidity_percent}} %")
-print(f"Shelf Life: {{shelf_life_years:.2f}} years")
-print(f"Ea: {{Ea_kJ_per_mol}} kJ/mol")
-print(f"k at 65C: {{k_65C_per_day}} /day")
-print("=" * 60)
-print("Next Steps:")
-print("1. Add geometry (part module)")
-print("2. Assign section to geometry")
-print("3. Create step and boundary conditions")
-print("4. Submit job")
+mat.Elastic(table=(({Ea_kJ * 10:.2f}, 0.4999), ))
+mat.Density(table=(({prop.get('density', 1700.0) / 1e6:.4e}, ), ))
+mat.Hyperelastic(materialType=NEO_HOOKE, table=((0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), ))
+mat.Viscoelastic(domain=TIME, time=PRONY, table=((0.1, 0.05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                                                 (0.05, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                                                 (0.02, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)))
+print("Material created successfully.")
 '''
         st.download_button(
-            label="💾 تحميل السكريبت",
+            label="Download Python Script",
             data=py_content.encode('utf-8'),
             file_name=f"abaqus_script_{datetime.now().strftime('%Y%m%d_%H%M')}.py",
             mime="text/x-python",
             key="abq_py_dl",
         )
 
-# ===== تصدير بيانات الإجهاد-الانفعال =====
-st.subheader("📊 بيانات الإجهاد-الانفعال للتصدير")
-
-# حساب بيانات تجريبية بناءً على الخاصية المختارة
-strain_data = np.linspace(0, 0.1, 20)  # 0 to 10% strain
-stress_data = []
-
-for s in strain_data:
-    # نموذج خطي بسيط: stress = E * strain
-    stress_val = (Ea_kJ * 10) * s  # MPa
-    stress_data.append(stress_val)
-
-df_stress = pd.DataFrame({
-    "Strain": strain_data,
-    "Stress_MPa": stress_data,
-    "Time_days": [0] * len(strain_data),
-})
-
-st.dataframe(df_stress.head(10), use_container_width=True)
-
-if st.button("📥 تحميل بيانات الإجهاد-الانفعال (CSV)", key="abq_csv_btn"):
-    csv_data = df_stress.to_csv(index=False)
-    st.download_button(
-        label="💾 تحميل CSV",
-        data=csv_data.encode('utf-8'),
-        file_name=f"stress_strain_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-        mime="text/csv",
-        key="abq_csv_dl",
-    )
-
-# ===== دليل الاستخدام =====
-with st.expander("📖 دليل استخدام ملفات Abaqus"):
+with st.expander(t("abaqus_guide")):
     st.markdown("""
-    ### خطوات تشغيل التحليل في Abaqus:
+    ### Steps to run in Abaqus:
+    1. Download INP file and Python script.
+    2. Open Abaqus/CAE → File → Run Script.
+    3. Select the Python script.
+    4. The material will be created automatically.
     
-    **1. تحميل الملفات:**
-    - حمّل ملف `INP` (خامات المادة)
-    - حمّل سكريبت Python (للتحليل الكامل)
-    - حمّل ملف CSV (بيانات الإجهاد-الانفعال)
-    
-    **2. تشغيل السكريبت:**
-    - افتح Abaqus/CAE
-    - من القائمة: File → Run Script
-    - اختر السكريبت المحمّل
-    - اضغط Open
-    
-    **3. بديل: تشغيل INP مباشرة:**
-    - افتح Abaqus Command
-    - اكتب: `abaqus job=model_name input=file.inp`
-    
-    **4. البيانات المتوفرة:**
-    - **Material Properties:** E, ν, Density
-    - **Hyperelastic:** Neo-Hookean (C10, D1)
-    - **Viscoelastic:** Prony Series (3 terms)
-    - **Aging Conditions:** Temperature, Humidity, Shelf Life
-    
-    **5. الخطوات التالية في Abaqus:**
-    - إضافة الهندسة (Part Module)
-    - تعيين القطاع (Section Assignment)
-    - إضافة خطوات التحليل (Step Module)
-    - شروط الحدود (Load Module)
-    - الشبكة (Mesh Module)
-    - تشغيل الوظيفة (Job Module)
-    
-    ### ⚠️ ملاحظة مهمة:
-    - القيم الافتراضية للمعاملات تقريبية ومبنية على البيانات المتاحة
-    - يُنصح بمعايرة القيم من اختبارات فعلية قبل الاستخدام
-    - راجع وحدة القياسات (Units) في Abaqus
+    ### Data provided:
+    - Elastic modulus, Poisson's ratio
+    - Density
+    - Hyperelastic (Neo-Hookean)
+    - Viscoelastic (Prony series)
+    - Aging conditions
     """)
+
+# ============================================================
+# Footer
+# ============================================================
+st.markdown("---")
+st.caption("Rocket Aging Simulation Platform | v2.0 | 2026")
