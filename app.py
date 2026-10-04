@@ -665,8 +665,8 @@ def generate_pdf_report():
     pdf.cell(0, 9, "2. Simulation Parameters", ln=True)
     pdf.ln(2)
     pdf.set_font("Arial", "", 10)
-        prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
-        param_lines = [
+    prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
+    param_lines = [
             f"Governing Property: {prop_label_en}",
             f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
             f"  [Literature reference: {prop.get('Ea_default', 0):.0f} kJ/mol]",
