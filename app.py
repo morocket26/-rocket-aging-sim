@@ -209,7 +209,6 @@ def clean_text_for_pdf(text):
 
 
 def get_propellant_display_info(prop, key):
-    """إرجاع معلومات النوع حسب اللغة"""
     if st.session_state.language == "en":
         return {
             "name": key.split(' - ')[0],
@@ -439,7 +438,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# اختيار اللغة (أول حاجة في الشريط الجانبي)
+# اختيار اللغة
 # ============================================================
 lang_choice = st.sidebar.radio(
     "🌐 اللغة / Language",
@@ -450,7 +449,6 @@ lang_choice = st.sidebar.radio(
 st.session_state.language = "ar" if lang_choice == "العربية" else "en"
 st.sidebar.markdown("---")
 
-# مفتاح اللغة للحقول (لتحديثها عند تغيير اللغة)
 lang_key = st.session_state.language
 
 # ============================================================
@@ -468,9 +466,14 @@ propellant_key = st.sidebar.selectbox(
     list(PROPELLANT_TYPES.keys()),
     key=f"propellant_selector_{lang_key}",
 )
+
+# فحص أمان
+if propellant_key not in PROPELLANT_TYPES:
+    propellant_key = list(PROPELLANT_TYPES.keys())[0]
+
 prop = PROPELLANT_TYPES[propellant_key]
 
-# معلومات النوع (حسب اللغة)
+# معلومات النوع
 prop_info = get_propellant_display_info(prop, propellant_key)
 st.sidebar.markdown(f"""
 **{t("prop_info")}:**
@@ -485,13 +488,11 @@ st.sidebar.markdown(f"""
 # ============================================================
 st.sidebar.header(t("governing_property"))
 
-# قاموس الخصائص حسب اللغة
 if st.session_state.language == "en":
     prop_options = prop.get("properties_en", {"young_modulus": "Young Modulus"})
 else:
     prop_options = prop.get("properties_ar", {"young_modulus": "معامل يونج"})
 
-# عكس القاموس (القيمة -> المفتاح)
 prop_options_inv = {v: k for k, v in prop_options.items()}
 
 if prop["has_real_data"]:
@@ -508,6 +509,11 @@ prop_label = st.sidebar.selectbox(
     list(prop_options.keys()),
     key=f"prop_label_selector_{lang_key}",
 )
+
+# فحص أمان: لو القيمة القديمة لسه موجودة
+if prop_label not in prop_options_inv:
+    prop_label = list(prop_options.keys())[0]
+
 prop_key = prop_options_inv[prop_label]
 
 # ============================================================
@@ -515,7 +521,7 @@ prop_key = prop_options_inv[prop_label]
 # ============================================================
 st.sidebar.header(t("ea_header"))
 
-if prop["has_real_data"]:
+if prop["has_real_data"] and prop_key in prop["experimental_data"]:
     d = prop["experimental_data"][prop_key]
     t_data = np.array(d["t"], dtype=float)
     y_data = np.array(d["y"], dtype=float)
@@ -564,6 +570,10 @@ criterion = st.sidebar.selectbox(
     criteria_list,
     key=f"criterion_selector_{lang_key}",
 )
+
+# فحص أمان
+if criterion not in criteria_list:
+    criterion = criteria_list[0]
 
 threshold_pct = st.sidebar.slider(
     t("allowed_change"),
@@ -623,7 +633,7 @@ T_exp_K = T_exp_C + 273.15
 Ea = Ea_kJ * 1000
 T_storage_K = T_storage_C + 273.15
 
-if prop["has_real_data"] and use_real_data:
+if prop["has_real_data"] and use_real_data and prop_key in prop.get("experimental_data", {}):
     d = prop["experimental_data"][prop_key]
     t_data_arr = np.array(d["t"], dtype=float)
     y_data_arr = np.array(d["y"], dtype=float)
@@ -645,7 +655,6 @@ def k_at(T_K):
 k_storage = k_at(T_storage_K)
 k_ref = k_at(T_ref_K)
 
-# الرطوبة
 if use_humidity:
     RH_factor_storage = (RH_storage / RH_ref) ** n_humidity
     RH_factor_ref = 1.0
@@ -708,7 +717,7 @@ st.markdown(f"""
 # ============================================================
 # رسم التحقق
 # ============================================================
-if prop["has_real_data"] and use_real_data:
+if prop["has_real_data"] and use_real_data and prop_key in prop.get("experimental_data", {}):
     st.header(t("validation_header"))
     d = prop["experimental_data"][prop_key]
     t_data_plot = np.array(d["t"], dtype=float)
@@ -972,6 +981,12 @@ with col_b:
         key=f"compare_type_B_{lang_key}",
     )
 
+# فحص أمان
+if type_A not in PROPELLANT_TYPES:
+    type_A = list(PROPELLANT_TYPES.keys())[0]
+if type_B not in PROPELLANT_TYPES:
+    type_B = list(PROPELLANT_TYPES.keys())[0]
+
 if st.button(t("compare_btn"), type="primary", key=f"compare_btn_key_{lang_key}"):
     prop_A = PROPELLANT_TYPES[type_A]
     prop_B = PROPELLANT_TYPES[type_B]
@@ -1164,4 +1179,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v2.1 | 2026")
+st.caption("Rocket Aging Simulation Platform | v2.2 | 2026")
