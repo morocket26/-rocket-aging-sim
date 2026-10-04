@@ -45,6 +45,14 @@ PROPELLANT_TYPES = {
             "زيادة الصلابة Shore A 10%",
         ],
         "reference": "Asthana et al., Solid Propellant Chemistry",
+        "aging_mechanism_en": "Stabilizer depletion (2-NDPA, Carbamite) + AP/NG interaction",
+        "stabilizers_en": "2-NDPA, Carbamite (EC), MNA",
+        "reference_en": "HELL FIRE Motor Test (1998) + Asthana et al.",
+        "properties_en": {
+            "young_modulus": "Young Modulus",
+            "shore_A": "Shore A Hardness",
+            "max_thrust": "Max Thrust",
+        },
         "k_exp_65C": 0.0048,
         "has_real_data": True,
         "experimental_data": {
