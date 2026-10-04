@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 منصة محاكاة اختبارات التقادم - محركات صاروخية صلبة
-v4.0 - User-controllable failure criterion percentages
+v4.2 - Separated real-data vs assumed failure criteria
 """
 import streamlit as st
 import numpy as np
@@ -21,10 +21,10 @@ TRANSLATIONS = {
         "select_propellant": "اختر نوع الوقود",
         "prop_info": "📌 معلومات النوع",
         "governing_property": "🎯 الخاصية الحاكمة",
-        "select_property": "اختر الخاصية",
         "use_exp_data": "استخدام البيانات التجريبية (65°C)",
         "ea_header": "🌡️ طاقة التنشيط Ea",
         "failure_criterion": "⚠️ معيار الفشل",
+        "criterion_category_label": "فئة المعيار",
         "criterion_type_label": "نوع معيار الفشل",
         "allowed_change": "النسبة المسموحة (%)",
         "storage_header": "📦 ظروف التخزين",
@@ -92,6 +92,10 @@ TRANSLATIONS = {
         "exp_data_label": "بيانات تجريبية",
         "report_ready": "✅ التقرير جاهز للتحميل!",
         "error": "خطأ",
+        "category_real": "✅ معايير لها بيانات تجريبية",
+        "category_assumed": "⚠️ معايير مفترضة (تقريبية)",
+        "warning_assumed": "⚠️ لا توجد بيانات تجريبية لهذه الخاصية. يتم استخدام معامل يونج كبديل تقريبي.",
+        "info_real": "✅ البيانات التجريبية متوفرة لهذه الخاصية.",
     },
     "en": {
         "title": "🚀 Aging Simulation Platform",
@@ -100,10 +104,10 @@ TRANSLATIONS = {
         "select_propellant": "Select Propellant",
         "prop_info": "📌 Propellant Info",
         "governing_property": "🎯 Governing Property",
-        "select_property": "Select Property",
         "use_exp_data": "Use Experimental Data (65°C)",
         "ea_header": "🌡️ Activation Energy Ea",
         "failure_criterion": "⚠️ Failure Criterion",
+        "criterion_category_label": "Criterion Category",
         "criterion_type_label": "Failure Criterion Type",
         "allowed_change": "Allowed Change (%)",
         "storage_header": "📦 Storage Conditions",
@@ -171,6 +175,10 @@ TRANSLATIONS = {
         "exp_data_label": "Experimental data",
         "report_ready": "✅ Report ready!",
         "error": "Error",
+        "category_real": "✅ Criteria with Experimental Data",
+        "category_assumed": "⚠️ Assumed Criteria (Approximate)",
+        "warning_assumed": "⚠️ No experimental data for this property. Young Modulus is used as an approximation.",
+        "info_real": "✅ Experimental data available for this property.",
     },
 }
 
@@ -182,27 +190,49 @@ def t(key):
 
 
 # ============================================================
-# أنواع معايير الفشل (بدون نسبة - المستخدم يحددها)
+# قوائم معايير الفشل (مفصولة)
 # ============================================================
-# قاموس: نوع المعيار → الخاصية المرتبطة
-CRITERION_TYPE_TO_PROPERTY = {
-    # Arabic
+CRITERIA_REAL_AR = [
+    "زيادة معامل يونج",
+    "زيادة الصلابة Shore A",
+    "زيادة الدفع الأقصى",
+]
+CRITERIA_REAL_EN = [
+    "Young Modulus increase",
+    "Shore A increase",
+    "Max Thrust increase",
+]
+
+CRITERIA_ASSUMED_AR = [
+    "استهلاك المُثبِّت",
+    "انخفاض Elongation",
+    "فقدان وزن",
+]
+CRITERIA_ASSUMED_EN = [
+    "Stabilizer depletion",
+    "Elongation decrease",
+    "Weight loss",
+]
+
+# ربط كل معيار بالخاصية الفعلية
+CRITERION_TO_PROPERTY = {
+    # Real data
     "زيادة معامل يونج": "young_modulus",
     "زيادة الصلابة Shore A": "shore_A",
     "زيادة الدفع الأقصى": "max_thrust",
-    "استهلاك المُثبِّت": "young_modulus",
-    "انخفاض Elongation": "young_modulus",
-    "فقدان وزن": "young_modulus",
-    # English
     "Young Modulus increase": "young_modulus",
     "Shore A increase": "shore_A",
     "Max Thrust increase": "max_thrust",
+    # Assumed (use Young Modulus as proxy)
+    "استهلاك المُثبِّت": "young_modulus",
+    "انخفاض Elongation": "young_modulus",
+    "فقدان وزن": "young_modulus",
     "Stabilizer depletion": "young_modulus",
     "Elongation decrease": "young_modulus",
     "Weight loss": "young_modulus",
 }
 
-# قوالب نصية (مع مكان النسبة)
+# قوالب نصية
 CRITERION_TEXT_TEMPLATES = {
     "ar": {
         "زيادة معامل يونج": "زيادة معامل يونج {pct:.0f}%",
@@ -430,7 +460,8 @@ new_lang = "ar" if lang_choice == "العربية" else "en"
 
 if st.session_state.language != new_lang:
     widget_prefixes = [
-        "propellant_selector_", "criterion_type_selector_", "threshold_slider_",
+        "propellant_selector_", "criterion_category_selector_",
+        "criterion_type_selector_", "threshold_slider_",
         "use_real_data_checkbox_", "ea_slider_", "storage_temp_input_",
         "use_humidity_check_", "rh_storage_slider_", "rh_ref_input_",
         "n_humidity_slider_", "compare_type_A_", "compare_type_B_",
@@ -489,29 +520,35 @@ else:
 prop_options_lookup = {v: k for k, v in prop_options.items()}
 
 # ============================================================
-# معيار الفشل: قائمة النوع + شريط النسبة
+# معيار الفشل: فصل حقيقي/مفترض + شريط النسبة
 # ============================================================
 st.sidebar.header(t("failure_criterion"))
 
-# قائمة أنواع المعايير المتاحة (حسب اللغة)
+# اختيار الفئة (بيانات حقيقية / مفترضة)
 if st.session_state.language == "en":
-    criterion_types_list = [
-        "Young Modulus increase",
-        "Shore A increase",
-        "Max Thrust increase",
-        "Stabilizer depletion",
-        "Elongation decrease",
-        "Weight loss",
-    ]
+    category_options = [t("category_real"), t("category_assumed")]
 else:
-    criterion_types_list = [
-        "زيادة معامل يونج",
-        "زيادة الصلابة Shore A",
-        "زيادة الدفع الأقصى",
-        "استهلاك المُثبِّت",
-        "انخفاض Elongation",
-        "فقدان وزن",
-    ]
+    category_options = [t("category_real"), t("category_assumed")]
+
+category = st.sidebar.radio(
+    t("criterion_category_label"),
+    category_options,
+    key=f"criterion_category_selector_{lang_key}",
+)
+
+# قائمة المعايير حسب الفئة
+if category == t("category_real"):
+    if st.session_state.language == "en":
+        criterion_types_list = CRITERIA_REAL_EN
+    else:
+        criterion_types_list = CRITERIA_REAL_AR
+    is_assumed = False
+else:
+    if st.session_state.language == "en":
+        criterion_types_list = CRITERIA_ASSUMED_EN
+    else:
+        criterion_types_list = CRITERIA_ASSUMED_AR
+    is_assumed = True
 
 criterion_type = st.sidebar.selectbox(
     t("criterion_type_label"),
@@ -519,8 +556,8 @@ criterion_type = st.sidebar.selectbox(
     key=f"criterion_type_selector_{lang_key}",
 )
 
-# الخاصية الافتراضية من نوع المعيار
-derived_prop_key = CRITERION_TYPE_TO_PROPERTY.get(criterion_type, "young_modulus")
+# الخاصية الافتراضية
+derived_prop_key = CRITERION_TO_PROPERTY.get(criterion_type, "young_modulus")
 derived_prop_label = [k for k, v in prop_options_lookup.items() if v == derived_prop_key]
 
 if derived_prop_label:
@@ -530,6 +567,12 @@ else:
     prop_key = list(prop_options_lookup.values())[0]
     prop_label = list(prop_options_lookup.keys())[0]
 
+# تحذير لو معيار مفترض
+if is_assumed:
+    st.sidebar.warning(t("warning_assumed"))
+else:
+    st.sidebar.success(t("info_real"))
+
 # شريط النسبة (المستخدم يتحكم فيها بالكامل)
 threshold_pct = st.sidebar.slider(
     t("allowed_change"),
@@ -537,12 +580,12 @@ threshold_pct = st.sidebar.slider(
     key=f"threshold_slider_{lang_key}",
 )
 
-# توليد نص معيار الفشل تلقائيًا
+# توليد نص معيار الفشل
 criterion_template = CRITERION_TEXT_TEMPLATES[st.session_state.language].get(criterion_type, "{pct:.0f}%")
 criterion = criterion_template.format(pct=threshold_pct)
 
 # ============================================================
-# عرض الخاصية الحاكمة (للعرض فقط)
+# عرض الخاصية الحاكمة
 # ============================================================
 st.sidebar.header(t("governing_property"))
 st.sidebar.info(f"**{t('governing_property')}:** {prop_label}")
@@ -1178,4 +1221,4 @@ with st.expander(t("abaqus_guide")):
 # Footer
 # ============================================================
 st.markdown("---")
-st.caption("Rocket Aging Simulation Platform | v4.0 | 2026")
+st.caption("Rocket Aging Simulation Platform | v4.2 | 2026")
