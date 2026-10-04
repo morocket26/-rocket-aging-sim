@@ -655,6 +655,7 @@ def generate_pdf_report():
             f"Aging Mechanism: {prop.get('aging_mechanism_en', 'N/A')}",           
         f"Stabilizers: {prop.get('stabilizers_en', 'N/A')}",
             f"Reference: {prop.get('reference_en', prop.get('reference', 'N/A'))}",
+    ]
     for line in info_lines:
         pdf.cell(0, 6, f"  - {line}", ln=True)
     pdf.ln(3)
@@ -667,7 +668,6 @@ def generate_pdf_report():
     pdf.set_font("Arial", "", 10)
            # اسم الخاصية بالإنجليزي
         prop_label_en = prop.get("properties_en", {}).get(prop_key, "Selected Property")
-
         param_lines = [
             f"Governing Property: {prop_label_en}",
             f"Activation Energy (Ea): {Ea_kJ:.1f} kJ/mol",
