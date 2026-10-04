@@ -6,7 +6,7 @@ TRANSLATIONS = {
         "title": "🚀 منصة محاكاة اختبارات التقادم",
         "caption": "وقود صاروخي صلب | 5 أنواع مدعومة | معايرة ببيانات تجريبية",
         "propellant_type": "🔥 نوع الوقود",
-        "select_propellant": t("select_propellant"),
+        "select_propellant": "اختر نوع الوقود",
         "prop_info": "📌 معلومات النوع",
         "governing_property": "🎯 الخاصية الحاكمة",
         "select_property": "اختر الخاصية",
