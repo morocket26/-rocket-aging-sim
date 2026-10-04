@@ -543,11 +543,18 @@ if prop["has_real_data"]:
 else:
     use_real_data = False
 
+prop_options_lookup = {v: k for k, v in prop_options.items()}
+
 prop_label = st.sidebar.selectbox(
     t("select_property"),
-    list(prop_options.keys()),
+    list(prop_options_lookup.keys()),
     key=f"prop_label_selector_{lang_key}",
 )
+
+if prop_label not in prop_options_lookup:
+    prop_label = list(prop_options_lookup.keys())[0]
+
+prop_key = prop_options_lookup[prop_label]
 
 # فحص أمان
 if prop_label not in prop_options_inv:
